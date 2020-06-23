@@ -9,7 +9,7 @@ if COMPILE:
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
         fortran_compile_call.append(r"-c")
-        fortran_compile_call.append(r"varPrecision.f90")
+        # fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"module_levelpool.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"levelpools")
