@@ -41,7 +41,22 @@ else:
 # Python: time loop; segment loop; constant channel variables are passed to Fortran
 # Fortran: Take constant variable values and then run MC for a single segment
 
-
+#comment this section out when attaching new data, fortran code needs values to run correctly
+ln=1,
+qi0=1,
+qi1=1,
+ql=1,
+dt=1,
+h=1,
+ar=1,
+we=1,
+maxh=1,
+wc=1,
+wl=1,
+dl=1,
+oe=1,
+oc=1,
+oa=1,
 
 
 def reservoirs_calc(
@@ -64,30 +79,46 @@ def reservoirs_calc(
 
     # call Fortran routine
     return module_levelpool.levelpool_physics(
-    ln=1,
-    qi0=1,
-    qi1=1,
-    ql=1,
-    dt=1,
-    h=1,
-    ar=1,
-    we=1,
-    maxh=1,
-    wc=1,
-    wl=1,
-    dl=1,
-    oe=1,
-    oc=1,
-    oa=1,
+    ln,
+    qi0,
+    qi1,
+    ql,
+    dt,
+    h,
+    ar,
+    we,
+    maxh,
+    wc,
+    wl,
+    dl,
+    oe,
+    oc,
+    oa,
     )
     # return qdc, vel, depth
 
 
-reservoirs_calc()
-# def main():
-#     reservoirs_calc()
+# reservoirs_calc()
+def main():
+    reservoirs_calc(
+    ln,
+    qi0,
+    qi1,
+    ql,
+    dt,
+    h,
+    ar,
+    we,
+    maxh,
+    wc,
+    wl,
+    dl,
+    oe,
+    oc,
+    oa,
+)
 
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
