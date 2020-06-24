@@ -17,8 +17,11 @@ import sys
 import time
 import numpy as np
 import argparse
-
-
+import sys
+sys.path.append(r"../APD/inland_hydraulics/wrf-hydro-run/NWM_2.1_Sample_Datasets/LAKEPARM.nc")
+sys.path.append(r"../../src/fortran_routing/mc_pylink_v00/Reservoir_singleTS")
+import reservoirs_nwm
+from reservoirs_nwm import reservoirs_calc
 def _handle_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -127,6 +130,7 @@ else:
 connections = None
 networks = None
 flowdepthvel = None
+supernetwork_values = None
 
 ## network and reach utilities
 import nhd_network_utilities as nnu
@@ -142,6 +146,7 @@ def compute_network(
     terminal_segment=None,
     network=None,
     supernetwork_data=None,
+    is_reservoir=False,
     verbose=False,
     debuglevel=0,
     write_output=False,
@@ -157,7 +162,7 @@ def compute_network(
     # print(tuple(([x for x in network.keys()][i], [x for x in network.values()][i]) for i in range(len(network))))
 
     # if verbose: print(f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_order']}")
-
+    
     ordered_reaches = {}
     for head_segment, reach in network["reaches"].items():
         if reach["seqorder"] not in ordered_reaches:
@@ -172,22 +177,45 @@ def compute_network(
 
     for ts in range(0, nts):
         # print(f'timestep: {ts}\n')
+        if is_reservoir == True:
+            # print(connections[terminal_segment]['data'])
+            reservoirs_calc(
+                ln=connections[terminal_segment]['data'][0],
+                qi0=connections[terminal_segment]['data'][1],
+                qi1=connections[terminal_segment]['data'][2],
+                ql=connections[terminal_segment]['data'][3],
+                dt=connections[terminal_segment]['data'][4],
+                h=connections[terminal_segment]['data'][5],
+                ar=connections[terminal_segment]['data'][6],
+                we=connections[terminal_segment]['data'][7],
+                maxh=connections[terminal_segment]['data'][8],
+                wc=connections[terminal_segment]['data'][9],
+                wl=connections[terminal_segment]['data'][10],
+                dl=connections[terminal_segment]['data'][11],
+                oe=connections[terminal_segment]['data'][12],
+                oc=connections[terminal_segment]['data'][13],
+                oa=connections[terminal_segment]['data'][14],
+            )
+            
+            
+        else:
+            for x in range(network["maximum_reach_seqorder"], -1, -1):
+                for head_segment, reach in ordered_reaches[x]:
+                    # print(f'{{{head_segment}}}:{reach}')
 
-        for x in range(network["maximum_reach_seqorder"], -1, -1):
-            for head_segment, reach in ordered_reaches[x]:
-                # print(f'{{{head_segment}}}:{reach}')
+                    compute_mc_reach_up2down(
+                        head_segment=head_segment,
+                        reach=reach,
+                        supernetwork_data=supernetwork_data,
+                        ts=ts,
+                        verbose=verbose,
+                        debuglevel=debuglevel,
+                        write_output=write_output,
+                        assume_short_ts=assume_short_ts,
+                    )
+                    # print(f'{head_segment} {flowdepthvel[head_segment]}')
 
-                compute_mc_reach_up2down(
-                    head_segment=head_segment,
-                    reach=reach,
-                    supernetwork_data=supernetwork_data,
-                    ts=ts,
-                    verbose=verbose,
-                    debuglevel=debuglevel,
-                    write_output=write_output,
-                    assume_short_ts=assume_short_ts,
-                )
-                # print(f'{head_segment} {flowdepthvel[head_segment]}')
+       
 
 
 # TODO: generalize with a direction flag
@@ -468,11 +496,16 @@ def main():
         if verbose:
             print("executing computation on ordered reaches ...")
 
+        #########
+        waterbodies_values = supernetwork_values[13]
+        
         for terminal_segment, network in networks.items():
+            is_reservoir = terminal_segment in waterbodies_values
             compute_network(
                 terminal_segment=terminal_segment,
                 network=network,
                 supernetwork_data=supernetwork_data,
+                is_reservoir=is_reservoir,
                 verbose=False,
                 debuglevel=debuglevel,
                 write_output=write_output,
