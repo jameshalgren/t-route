@@ -42,21 +42,21 @@ else:
 # Fortran: Take constant variable values and then run MC for a single segment
 
 #comment this section out when attaching new data, fortran code needs values to run correctly
-ln=1,
-qi0=1,
-qi1=1,
-ql=1,
-dt=1,
-h=1,
-ar=1,
-we=1,
-maxh=1,
-wc=1,
-wl=1,
-dl=1,
-oe=1,
-oc=1,
-oa=1,
+# ln=1,
+# qi0=1,
+# qi1=1,
+# ql=1,
+# dt=1,
+# h=1,
+# ar=1,
+# we=1,
+# maxh=1,
+# wc=1,
+# wl=1,
+# dl=1,
+# oe=1,
+# oc=1,
+# oa=1,
 
 
 def reservoirs_calc(
