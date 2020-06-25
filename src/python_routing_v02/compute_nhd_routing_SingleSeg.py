@@ -18,10 +18,12 @@ import time
 import numpy as np
 import argparse
 import sys
-sys.path.append(r"../APD/inland_hydraulics/wrf-hydro-run/NWM_2.1_Sample_Datasets/LAKEPARM.nc")
 sys.path.append(r"../../src/fortran_routing/mc_pylink_v00/Reservoir_singleTS")
 import reservoirs_nwm
 from reservoirs_nwm import reservoirs_calc
+import xarray as xr
+import tqdm
+
 def _handle_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -141,12 +143,13 @@ def writetoFile(file, writeString):
     file.write(writeString)
     file.write("\n")
 
-
+# not connected to main()
 def compute_network(
+    dt=60.0,
     terminal_segment=None,
     network=None,
     supernetwork_data=None,
-    is_reservoir=False,
+    waterbody=None,
     verbose=False,
     debuglevel=0,
     write_output=False,
@@ -174,28 +177,34 @@ def compute_network(
     # initialize flowdepthvel dict
     nts = 50  # one timestep
     # nts = 1440 # number fof timestep = 1140 * 60(model timestep) = 86400 = day
-
+    ds = xr.open_dataset('/home/APD/inland_hydraulics/wrf-hydro-run/NWM_2.1_Sample_Datasets/LAKEPARM_CONUS.nc')
+    df1 = ds.to_dataframe()
+    # print(df1)
+    
     for ts in range(0, nts):
         # print(f'timestep: {ts}\n')
-        if is_reservoir == True:
-            # print(connections[terminal_segment]['data'])
-            reservoirs_calc(
-                ln=connections[terminal_segment]['data'][0],
-                qi0=connections[terminal_segment]['data'][1],
-                qi1=connections[terminal_segment]['data'][2],
-                ql=connections[terminal_segment]['data'][3],
-                dt=connections[terminal_segment]['data'][4],
-                h=connections[terminal_segment]['data'][5],
-                ar=connections[terminal_segment]['data'][6],
-                we=connections[terminal_segment]['data'][7],
-                maxh=connections[terminal_segment]['data'][8],
-                wc=connections[terminal_segment]['data'][9],
-                wl=connections[terminal_segment]['data'][10],
-                dl=connections[terminal_segment]['data'][11],
-                oe=connections[terminal_segment]['data'][12],
-                oc=connections[terminal_segment]['data'][13],
-                oa=connections[terminal_segment]['data'][14],
+        if waterbody:
+            for index,row in df1.iterrows():
+                if row['lake_id']==waterbody:
+                    reservoirs_calc(
+                ln=row['lake_id'],
+                qi0=0, #inflow at initial timestep
+                qi1=12, #inflow at current timestep
+                ql=3,
+                dt=dt, #current timestep
+                h=(row['OrificeE']*row['WeirE'])/2, # water elevation height (m) used dummy value 
+                ar=row['LkArea'], # area of reservoir 
+                we=row['WeirE'],
+                maxh=row['LkMxE'],
+                wc=row['WeirC'],
+                wl=row['WeirL'],
+                dl=row['WeirL']*row['Dam_Length'],
+                oe=row['OrificeE'],
+                oc=row['OrificeC'],
+                oa=row['OrificeA'],
             )
+                    
+            
             
             
         else:
@@ -220,6 +229,7 @@ def compute_network(
 
 # TODO: generalize with a direction flag
 def compute_mc_reach_up2down(
+    dt=60.0,
     head_segment=None,
     reach=None,
     supernetwork_data=None,
@@ -279,7 +289,7 @@ def compute_mc_reach_up2down(
         current_flow = flowdepthvel[current_segment]
 
         # for now treating as constant per reach
-        dt = 60.0
+        dt = dt
         bw = data[supernetwork_data["bottomwidth_col"]]
         tw = data[supernetwork_data["topwidth_col"]]
         twcc = data[supernetwork_data["topwidthcc_col"]]
@@ -413,11 +423,11 @@ def singlesegment(
 def main():
 
     args = _handle_args()
-
+    global dt 
     global connections
     global networks
     global flowdepthvel
-
+    dt = 60.0
     debuglevel = -1 * int(args.debuglevel)
     verbose = args.verbose
     showtiming = args.showtiming
@@ -497,15 +507,21 @@ def main():
             print("executing computation on ordered reaches ...")
 
         #########
-        waterbodies_values = supernetwork_values[13]
+        waterbodies_values = supernetwork_values[12]
+        waterbodies_segments = supernetwork_values[13]
         
         for terminal_segment, network in networks.items():
-            is_reservoir = terminal_segment in waterbodies_values
+            # is_reservoir = terminal_segment in waterbodies_segments
+            try:
+                waterbody = waterbodies_segments[terminal_segment]
+            except:
+                waterbody = None
             compute_network(
+                dt=dt,
                 terminal_segment=terminal_segment,
                 network=network,
                 supernetwork_data=supernetwork_data,
-                is_reservoir=is_reservoir,
+                waterbody=waterbody,
                 verbose=False,
                 debuglevel=debuglevel,
                 write_output=write_output,
