@@ -22,7 +22,7 @@ sys.path.append(r"../../src/fortran_routing/mc_pylink_v00/Reservoir_singleTS")
 import reservoirs_nwm
 from reservoirs_nwm import reservoirs_calc
 import xarray as xr
-import tqdm
+
 
 def _handle_args():
     parser = argparse.ArgumentParser(
@@ -178,31 +178,32 @@ def compute_network(
     nts = 50  # one timestep
     # nts = 1440 # number fof timestep = 1140 * 60(model timestep) = 86400 = day
     ds = xr.open_dataset('/home/APD/inland_hydraulics/wrf-hydro-run/NWM_2.1_Sample_Datasets/LAKEPARM_CONUS.nc')
-    df1 = ds.to_dataframe()
-    # print(df1)
+    df1 = ds.to_dataframe().set_index('lake_id')
+    
     
     for ts in range(0, nts):
         # print(f'timestep: {ts}\n')
         if waterbody:
-            for index,row in df1.iterrows():
-                if row['lake_id']==waterbody:
-                    reservoirs_calc(
-                ln=row['lake_id'],
-                qi0=0, #inflow at initial timestep
-                qi1=12, #inflow at current timestep
-                ql=3,
-                dt=dt, #current timestep
-                h=(row['OrificeE']*row['WeirE'])/2, # water elevation height (m) used dummy value 
-                ar=row['LkArea'], # area of reservoir 
-                we=row['WeirE'],
-                maxh=row['LkMxE'],
-                wc=row['WeirC'],
-                wl=row['WeirL'],
-                dl=row['WeirL']*row['Dam_Length'],
-                oe=row['OrificeE'],
-                oc=row['OrificeC'],
-                oa=row['OrificeA'],
-            )
+            # print(df1.loc[2260997]['WeirL'])
+            # # for index,row in df1.iterrows():
+            #     if row['lake_id']==waterbody:
+            reservoirs_calc(
+        ln=waterbody,
+        qi0=0, #inflow at initial timestep
+        qi1=12, #inflow at current timestep
+        ql=3,
+        dt=dt, #current timestep
+        h=(df1.loc[waterbody]['OrificeE']*df1.loc[waterbody]['WeirE'])/2, # water elevation height (m) used dummy value 
+        ar=df1.loc[waterbody]['LkArea'], # area of reservoir 
+        we=df1.loc[waterbody]['WeirE'],
+        maxh=df1.loc[waterbody]['LkMxE'],
+        wc=df1.loc[waterbody]['WeirC'],
+        wl=df1.loc[waterbody]['WeirL'],
+        dl=df1.loc[waterbody]['WeirL']*df1.loc[waterbody]['Dam_Length'],
+        oe=df1.loc[waterbody]['OrificeE'],
+        oc=df1.loc[waterbody]['OrificeC'],
+        oa=df1.loc[waterbody]['OrificeA'],
+    )
                     
             
             
@@ -423,7 +424,6 @@ def singlesegment(
 def main():
 
     args = _handle_args()
-    global dt 
     global connections
     global networks
     global flowdepthvel
@@ -511,11 +511,13 @@ def main():
         waterbodies_segments = supernetwork_values[13]
         
         for terminal_segment, network in networks.items():
+            dt=dt
             # is_reservoir = terminal_segment in waterbodies_segments
+            waterbody = None
             try:
                 waterbody = waterbodies_segments[terminal_segment]
             except:
-                waterbody = None
+                pass
             compute_network(
                 dt=dt,
                 terminal_segment=terminal_segment,
