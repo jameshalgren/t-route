@@ -246,6 +246,7 @@ def convert_text_cols_to_val(
     the preferred path being to simply transition to 
     use of a dataframe with column keys to refer to 
     data columns."""
+    #TODO: delete this deprecated function and implement the dataframe
 
     key_col = geo_keys.index(key_col) + 2
     downstream_col = geo_keys.index(downstream_col) + 2
