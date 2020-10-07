@@ -103,9 +103,8 @@ if ENV_IS_CL:
 elif not ENV_IS_CL:
     root = pathlib.Path("../..").resolve()
     sys.path.append(r"../python_framework_v02")
-
     # TODO: automate compile for the package scripts
-    # sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
+    sys.path.append("fast_reach")
 
 ## network and reach utilities
 import nhd_network_utilities_v02 as nnu
