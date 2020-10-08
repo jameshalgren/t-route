@@ -829,11 +829,11 @@ def writeArraytoCSV(
                     zip(
                         flowveldepth[current_segment][:, time_index],
                         flowveldepth[current_segment][:, qlatval_index],
-                        flowveldepth[current_segment][:, qlatCumval_index],
                         flowveldepth[current_segment][:, flowval_index],
                         flowveldepth[current_segment][:, velval_index],
                         flowveldepth[current_segment][:, depthval_index],
                         flowveldepth[current_segment][:, storageval_index],
+                        flowveldepth[current_segment][:, qlatCumval_index],
                         flowveldepth[current_segment][:, kinCelerity_index],
                         flowveldepth[current_segment][:, courant_index],
                         flowveldepth[current_segment][:, X_index],
