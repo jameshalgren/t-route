@@ -160,7 +160,11 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
             !qdc = -333.3
         endif
 
-        twl = bw + (2.0_prec*z*h)
+        call hydraulic_geometry(h, bfd, bw, twcc, z, twl, R)
+        !TODO: The following line allows the system to reproduce the current
+        !velocity calculation, however the hydraulic radius provided is not
+        !taking into account the flood-plan flow, nor is the velocity
+        !accouting for the variation in Manning n.
         R = (h*(bw + twl) / 2.0_prec) / (bw + 2.0_prec*(((twl - bw) / 2.0_prec)**2.0_prec + h**2.0_prec)**0.5_prec)
         velc = (1.0_prec/n) * (R **(2.0_prec/3.0_prec)) * sqrt(s0)  !*average velocity in m/s
         depthc = h
@@ -386,9 +390,9 @@ subroutine hydraulic_geometry(h, bfd, bw, twcc, z, &
 
     real(prec), intent(in) :: h, bfd, bw, twcc, z
     real(prec), intent(out), optional :: twl, R, AREA, AREAC, WP, WPC
-    real(prec), intent(out), optional :: h_lt_bf, h_gt_bf
     real(prec) :: twl_loc, R_loc, AREA_loc, AREAC_loc, WP_loc, WPC_loc
-    real(prec) :: h_lt_bf_loc, h_gt_bf_loc
+    real(prec), intent(out), optional :: h_lt_bf, h_gt_bf
+    real(prec) :: h_gt_bf_loc, h_lt_bf_loc
 
     twl_loc = 0.0_prec
     R_loc = 0.0_prec
@@ -440,6 +444,7 @@ subroutine hydraulic_geometry(h, bfd, bw, twcc, z, &
     if (present(h_lt_bf)) then
         h_lt_bf = h_lt_bf_loc
     endif
+
 end subroutine hydraulic_geometry
 
 
