@@ -263,7 +263,7 @@ sys.path.append(os.path.join(root, r"src", r"python_framework_v01"))
 sys.path.append(os.path.join(root, r"src", r"python_framework_v02"))
 sys.path.append(os.path.join(root, r"src", r"python_routing_v01"))
 fortran_routing_dir = os.path.join(
-    root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS","courant_dev"
+    root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS"
 )
 fortran_reservoir_dir = os.path.join(
     root, r"src", r"fortran_routing", r"mc_pylink_v00", r"Reservoir_singleTS"
@@ -689,7 +689,7 @@ def compute_mc_reach_up2down(
             qlatCum,
             ck,
             cn, 
-            X
+            X,
         ]
 
         next_segment = connections[current_segment]["downstream"]
@@ -782,6 +782,12 @@ def compute_level_pool_reach_up2down(
         volumec = volumec + flowveldepth[current_segment][ts - 1][storageval_index]
         qlatCum = qlatCum + flowveldepth[current_segment][ts - 1][qlatCumval_index]
 
+    #TODO: There may be a more useful output value to provide here.
+    #celerity values are nullified for reservoirs.
+    ck = 0
+    cn = 0
+    X = 0
+
     flowveldepth[current_segment][ts] = [
         ts * dt,
         qdc,
@@ -790,6 +796,9 @@ def compute_level_pool_reach_up2down(
         qlat,
         volumec,
         qlatCum,
+        ck,
+        cn,
+        X,
     ]
 
 
@@ -829,11 +838,11 @@ def writeArraytoCSV(
                     zip(
                         flowveldepth[current_segment][:, time_index],
                         flowveldepth[current_segment][:, qlatval_index],
-                        flowveldepth[current_segment][:, qlatCumval_index],
                         flowveldepth[current_segment][:, flowval_index],
                         flowveldepth[current_segment][:, velval_index],
                         flowveldepth[current_segment][:, depthval_index],
                         flowveldepth[current_segment][:, storageval_index],
+                        flowveldepth[current_segment][:, qlatCumval_index],
                         flowveldepth[current_segment][:, kinCelerity_index],
                         flowveldepth[current_segment][:, courant_index],
                         flowveldepth[current_segment][:, X_index],
