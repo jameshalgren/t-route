@@ -156,8 +156,6 @@ def singlesegment(
     # return qdc, vel, depth
     return rv[:3]
 
-    return rv[:3]
-
 def main():
     """
       No Inputs: 
