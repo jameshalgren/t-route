@@ -9,7 +9,8 @@ subroutine submuskingcunge(    &
      qup,  quc, &
      qdp, ql,   dt,  So,   dx, &
      n,   Cs,   Bw,  Tw, TwCC, &
-     nCC, depthp, qdc, velc, depthc)
+     nCC, depthp, qdc, velc, depthc, &
+     Ck, Cn, X)
 
         IMPLICIT NONE
 
@@ -34,8 +35,9 @@ subroutine submuskingcunge(    &
 !--local variables
         REAL    :: C1, C2, C3, C4
         REAL    :: Km             !K travel time in hrs in reach
-        REAL    :: X              !weighting factors 0<=X<=0.5
-        REAL    :: Ck             ! wave celerity (m/s)
+        REAL, intent(OUT)    :: X      !weighting factors 0<=X<=0.5
+        REAL, intent(OUT)    :: Ck     ! wave celerity (m/s)
+        REAL, intent(OUT)    :: Cn     ! Courant number (Ck / (dx/dt))
 
 !-- channel geometry and characteristics, local variables
         REAL    :: Twl            ! top width at simulated flow (m)
@@ -330,9 +332,56 @@ subroutine submuskingcunge(    &
        qdc = 0.0
        depthc = 0.0
      endif
+    
+    ! *************************************************************
+    ! call courant subroutine here
+    ! *************************************************************
+    call courant(h, bfd, Bw, TwCC, ncc, So, n, z, dx, dt, Ck, Cn)
 
 ! ----------------------------------------------------------------
 END SUBROUTINE SUBMUSKINGCUNGE
 ! ----------------------------------------------------------------
+
+!**---------------------------------------------------**!
+!*                                                     *!
+!*                 COURANT SUBROUTINE                  *!
+!*                                                     *!
+!**---------------------------------------------------**!
+subroutine courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
+
+    implicit none
+
+    real(prec), intent(in) :: h, bfd, bw, twcc, ncc, s0, n, z, dx, dt
+    real(prec), intent(out) :: ck, cn
+    
+    real(prec) :: h_gt_bf, h_lt_bf, AREA, AREAC, WP, WPC, R
+    
+    h_gt_bf = max(h - bfd, 0.0_prec)
+    h_lt_bf = min(bfd, h)
+ 
+    AREA = (bw + h_lt_bf * z ) * h_lt_bf
+    
+    WP = (bw + 2 * h_lt_bf * sqrt(1 + z*z))
+    
+    AREAC = (twcc * h_gt_bf) 
+    
+    if(h_gt_bf .gt. 0.0_prec) then
+        WPC = twcc + (2 * (h_gt_bf)) 
+    else 
+        WPC = 0
+    endif
+    
+    R   = (AREA + AREAC)/(WP + WPC)
+    
+    ck = ((sqrt(s0)/n)* &
+            ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)* &
+            (2*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h_lt_bf*z))))*AREA &
+                + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec)*(h_gt_bf)**(2.0_prec/3.0_prec))*AREAC)/(AREA+AREAC)
+                
+    
+    cn = ck * (dt/dx)
+  
+end subroutine courant
+
 
 end module submuskingcunge_wrf_module
