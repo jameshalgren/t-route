@@ -101,19 +101,10 @@ ENV_IS_CL = False
 if ENV_IS_CL:
     root = pathlib.Path("/", "content", "t-route")
 elif not ENV_IS_CL:
-    
     root = pathlib.Path("../..").resolve()
     sys.path.append(r"../python_framework_v02")
-    
-    routing_v02_dir = os.path.join(root, "src", "python_routing_v02","fast_reach")
-    sys.path.append(routing_v02_dir)
-    
-    print(root)
-    print(routing_v02_dir)
-    
-
     # TODO: automate compile for the package scripts
-    # sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
+    sys.path.append("fast_reach")
 
 ## network and reach utilities
 import nhd_network_utilities_v02 as nnu
@@ -270,7 +261,7 @@ def main():
                     data_sub.index.values,
                     data_sub.columns.values,
                     data_sub.values,
-                    qlat_sub.values
+                    qlat_sub.values,
                 )
             )
 
