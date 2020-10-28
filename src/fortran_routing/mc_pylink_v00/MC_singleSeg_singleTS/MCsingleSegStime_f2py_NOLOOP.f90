@@ -193,7 +193,6 @@ end subroutine muskingcungenwm
 !subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
 !    qdp, ql, qup, quc, h, interval, WPC, Qj, C1, C2, C3, C4)
 
-!Uncomment this function signature for new initialization
 subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     qdp, ql, qup, quc, h, interval, Qj, C1, C2, C3, C4, X)
 
@@ -224,6 +223,8 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     !Uncomment next two lines for new initialization
     WPC = 0.0_prec
     AREA = 0.0_prec
+    !Uncomment next two lines for new initialization 
+    WPC = 0.0_prec
     AREAC = 0.0_prec
 
     R = 0.0_prec
