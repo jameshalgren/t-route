@@ -420,6 +420,7 @@ def _input_handler():
                 root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
             )
 
+        # this is test case material that can be moved over to TEST file. 
         elif run_pocono1_test:
             # NOTE: The test case for the Pocono basin was derived from this
             # resource on HydroShare, developed by aaraney and sourced from the
