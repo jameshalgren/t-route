@@ -494,6 +494,70 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
                 # reachable: a list of reachable segments within max_depth from source node h
                 rv[h] = reachable
 
+
+def build_subnetworks(connections, rconn, min_size, sources=None):
+    """
+    Construct subnetworks using a truncated breadth-first-search
+    
+    Arguments:
+        connections
+        rconn
+        max_depth
+        sources
+    Returns:
+        subnetwork_master
+    """
+    # if no sources provided, use tailwaters
+    if sources is None:
+        # identify tailwaters
+        sources = headwaters(rconn)
+
+    # create a list of all headwaters in the network
+    all_hws = headwaters(connections)
+
+    subnetwork_master = {}
+    for net in sources:
+
+        # subnetwork creation using a breadth first search restricted by maximum allowable depth
+        new_sources = set([net])
+        subnetworks = {}
+        group_order = 0
+        while new_sources:
+
+            # Build dict object containing reachable nodes within max_depth from each source in new_sources
+            rv = {}
+            for h in new_sources:
+
+                reachable = set()
+                Q = deque([(h, 0)])
+                stop_depth = 1000000
+
+                while Q:
+
+                    # pop node and it's topological depth from Q, add node to reachable list
+                    node, depth = Q.popleft()
+                    reachable.add(node)
+
+                    # get upstream connections of current node
+                    us_nodes = rconn.get(node, ())
+
+                    # extend Q if there are nodes upstream
+                    if len(us_nodes) > 0:
+                        # upstream depth increases if a junction is traversed
+                        if len(us_nodes) > 1:
+                            us_depth = depth + 1
+                        else:
+                            us_depth = depth
+                        # enforce minimum subnetwork size requirement
+                        if len(reachable) > min_size:
+                            stop_depth = depth
+                        # extend Q with upstream nodes and their topological depths
+                        if us_depth <= stop_depth:
+                            Q.extend(zip(us_nodes, [us_depth] * len(us_nodes)))
+
+                # reachable: a list of reachable segments within max_depth from source node h
+                rv[h] = reachable
+
             # find headwater segments in reachable groups, these will become the next set of sources
             # new_sources_list = []
             new_sources = set()
