@@ -428,6 +428,38 @@ def replace_waterbodies_connections(connections, waterbodies):
     return new_conn
 
 
+def limited_bfs_awlos(rconn, source, size=None):
+    reachable = set()
+    Q = deque([(source, 0)])
+    stop_depth = 1000000
+
+    while Q:
+
+        # pop node and it's topological depth from Q, add node to reachable list
+        node, depth = Q.popleft()
+        reachable.add(node)
+
+        # get upstream connections of current node
+        us_nodes = rconn.get(node, ())
+
+        # extend Q if there are nodes upstream
+        if len(us_nodes) > 0:
+            # upstream depth increases if a junction is traversed
+            if len(us_nodes) > 1:
+                us_depth = depth + 1
+            else:
+                us_depth = depth
+            # enforce minimum subnetwork size requirement
+            if len(reachable) > size:
+                stop_depth = depth
+            # extend Q with upstream nodes and their topological depths
+            if us_depth <= stop_depth:
+                Q.extend(zip(us_nodes, [us_depth] * len(us_nodes)))
+
+    # reachable: a list of reachable segments within max_depth from source node h
+    return reachable
+
+
 def threshold_limited_bfs(connections, source, size=None):
     """Visit all nodes until size has been reached. Then finish visiting the current order and return"""
     if size is None:
