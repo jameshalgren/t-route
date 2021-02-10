@@ -460,7 +460,7 @@ def limited_bfs_awlos(rconn, source, size=None):
     return reachable
 
 
-def threshold_limited_bfs(connections, source, size=None):
+def threshold_limited_bfs(rconn, source, size=None):
     """Visit all nodes until size has been reached. Then finish visiting the current order and return"""
     if size is None:
         size = float("inf")
@@ -480,8 +480,8 @@ def threshold_limited_bfs(connections, source, size=None):
         # We visit node *after* we've checked whether to continue.
         visited.add(node)
 
-        if node in connections:
-            children = connections[node]
+        if node in rconn:
+            children = rconn[node]
             if len(children) > 1:
                 Q.extend(zip(children, repeat(order + 1)))
             else:
