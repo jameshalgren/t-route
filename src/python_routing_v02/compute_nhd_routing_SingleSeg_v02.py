@@ -301,7 +301,7 @@ def compute_nhd_routing_v02(
 
     start_time = time.time()
     if parallel_compute_method == "by-subnetwork-jit-clustered":
-        networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
+        networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks_new(
             connections, rconn, subnetwork_target_size
         )
         subnetworks_only_ordered_jit = defaultdict(dict)

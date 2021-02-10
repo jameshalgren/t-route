@@ -519,10 +519,14 @@ def build_subnetworks_new(connections, rconn, min_size=None, sources=None):
         while new_sources:
 
             # Build dict object containing reachable nodes within max_depth from each source in new_sources
-            rv = {}
+            rv1 = {}
+            rv2 = {}
             for h in new_sources:
+                import pdb; pdb.set_trace()
                 ###########
-                rv[h] = threshold_limited_bfs(connections, h, size=min_size)
+                rv1[h] = limited_bfs_awlos(rconn, h, size=min_size)
+                rv2[h] = threshold_limited_bfs(rconn, h, size=min_size)
+                rv = rv1
 
             ###########
             """
@@ -565,6 +569,8 @@ def build_subnetworks_new(connections, rconn, min_size=None, sources=None):
                 # identify downstream connections for segments in this subnetwork
                 c = {key: connections[key] for key in seg}
                 # find apparent headwaters, will include new sources and actual headwaters
+                # TODO: Start here with debugging... 
+                # import pdb; pdb.set_trace()
                 sub_hws = headwaters(c)
                 # extract new sources by differencing with list of actual headwaters
                 srcs = sub_hws - all_hws
