@@ -300,7 +300,10 @@ def set_supernetwork_parameters(
             {
                 "title_string": "Cape Fear River Basin, NC",  # overwrites other title...
                 "mask_file_path": pathlib.Path(
-                    geo_input_folder, "Channels", "masks", "CapeFear_FULL_RES.txt",
+                    geo_input_folder,
+                    "Channels",
+                    "masks",
+                    "CapeFear_FULL_RES.txt",
                 ).resolve(),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
@@ -317,9 +320,18 @@ def set_supernetwork_parameters(
         rv.update(
             {
                 "title_string": "Hurricane Florence Domain, near Durham NC",  # overwrites other title...
+<<<<<<< HEAD
                 "mask_file_path": pathlib.Path(
                     geo_input_folder, "Channels", "masks", "Florence_FULL_RES.txt",
                 ).resolve(),
+=======
+                "mask_file_path": os.path.join(
+                    geo_input_folder,
+                    "Channels",
+                    "masks",
+                    "Florence_FULL_RES.txt",
+                ),
+>>>>>>> blackened routing files
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
                 "mask_key": 0,
@@ -491,7 +503,10 @@ def build_channel_initial_state(restart_parameters, channel_index=None):
         # assume to be zero
         # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
         q0 = pd.DataFrame(
-            0, index=channel_index, columns=["qu0", "qd0", "h0"], dtype="float32",
+            0,
+            index=channel_index,
+            columns=["qu0", "qd0", "h0"],
+            dtype="float32",
         )
 
     return q0
@@ -533,7 +548,14 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts, qts_subdivis
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
         qlat_df = pd.DataFrame(
+<<<<<<< HEAD
             qlat_const, index=connections_keys, columns=range(nts // qts_subdivisions), dtype="float32",
+=======
+            qlat_const,
+            index=connections_keys,
+            columns=range(nts),
+            dtype="float32",
+>>>>>>> blackened routing files
         )
 
     # TODO: Make a more sophisticated date-based filter
