@@ -37,8 +37,8 @@ cdef struct channel_properties:
     float twcc
     float z
     float s0
-    float sqr_s0
-    float sqr_1z2
+    float sqrt_s0
+    float sqrt_1z2
     float n
     float ncc
 
@@ -136,14 +136,14 @@ cdef void cython_muskingcunge(
     chan_struct.twcc = twcc
 
     chan_struct.s0 = s0
-    chan_struct.sqr_s0 = sqrtf(chan_struct.s0)
+    chan_struct.sqrt_s0 = sqrtf(chan_struct.s0)
 
     if cs == 0:
         chan_struct.z = 1
     else:
         chan_struct.z = 1/cs
 
-    chan_struct.sqr_1z2 = sqrtf(1.0 + (chan_struct.z * chan_struct.z))
+    chan_struct.sqrt_1z2 = sqrtf(1.0 + (chan_struct.z * chan_struct.z))
 
     if chan_struct.bw > chan_struct.tw:
         chan_struct.bfd = chan_struct.bw * (1/0.00001)
@@ -264,7 +264,7 @@ cdef void cython_muskingcunge(
 
         twl = chan_struct.bw + (2 * chan_struct.z * h)
         R = (0.5 * h * (chan_struct.bw + twl)) / (chan_struct.bw + 2.0 * sqrtf((((twl - chan_struct.bw) * 0.5) ** 2.0) + (h * h)))
-        velc = (1 / chan_struct.n) * ((R ** 2.0/3.0)) * chan_struct.sqr_s0
+        velc = (1 / chan_struct.n) * ((R ** 2.0/3.0)) * chan_struct.sqrt_s0
         depthc = h
     else:
         qdc = 0
@@ -347,7 +347,7 @@ cdef inline void compute_mc_flow(
     if hg.WP + hg.WPC > 0:
         qc.Q_mc = (t + qc.C4)
         qc.Q_normal = (((hg.WP + hg.WPC)/(((hg.WP*chan.n)+(hg.WPC*chan.ncc)))) *
-                    (hg.AREA+hg.AREAC) * ((hg.R**(2./3.))) * chan.sqr_s0)
+                    (hg.AREA+hg.AREAC) * ((hg.R**(2./3.))) * chan.sqrt_s0)
         qc.Q_j = qc.Q_mc - qc.Q_normal
 
 
@@ -358,14 +358,14 @@ cdef inline void compute_celerity(
 ) nogil:
 
     if (qc.h > 0.0):
-        qc.ck = fmaxf(0,(chan.sqr_s0/chan.n)*
+        qc.ck = fmaxf(0,(chan.sqrt_s0/chan.n)*
             ((5.0/3.0)*hg.R**(2.0/3.0) -
             ((2.0/3.0)*hg.R**(5.0/3.0) *
-            (2.0*chan.sqr_1z2/(chan.bw+2.0*hg.h_lt_bf*chan.z)))))
+            (2.0*chan.sqrt_1z2/(chan.bw+2.0*hg.h_lt_bf*chan.z)))))
         if (qc.h > chan.bfd):
             qc.ck = max(0.0,(qc.ck
                     * hg.AREA
-                    + ((chan.sqr_s0/(chan.ncc))
+                    + ((chan.sqrt_s0/(chan.ncc))
                     * (5.0/3.0)*(hg.h_gt_bf)**(2.0/3.0))
                     * hg.AREAC)
                     / (hg.AREA+hg.AREAC))
@@ -386,7 +386,7 @@ cdef inline void compute_hydraulic_geometry(
 
      hg.AREA = (chan.bw + hg.h_lt_bf * chan.z) * hg.h_lt_bf
 
-     hg.WP = (chan.bw + 2 * hg.h_lt_bf * chan.sqr_1z2)
+     hg.WP = (chan.bw + 2 * hg.h_lt_bf * chan.sqrt_1z2)
 
      hg.AREAC = (chan.twcc * hg.h_gt_bf)
 
