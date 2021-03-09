@@ -12,13 +12,46 @@ cdef extern from "<math.h>" nogil:
     double pow(double x, double y)
     float powf(float, float)
 
-cdef struct QC:
-    float Qj
-    float Qj_0
+
+cdef struct QHC:
+    float h
+    float Q_mc
+    float Q_normal
+    float Q_j
+    float Xmin
+    float X
+    float Km
+    float D
+    float ck
+    float cn
     float C1
     float C2
     float C3
     float C4
+
+
+cdef struct channel_properties:
+    float bfd
+    float bw
+    float tw
+    float twcc
+    float z
+    float s0
+    float sqr_s0
+    float sqr_1z2
+    float n
+    float ncc
+
+
+cdef struct hydraulic_geometry:
+    float twl
+    float R
+    float AREA
+    float AREAC
+    float WP
+    float WPC
+    float h_lt_bf
+    float h_gt_bf
 
 
 # INPUTS:
@@ -60,22 +93,23 @@ cdef struct QC:
 
 # single_seg.muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc, n, ncc, cs, s0, depthp)
 
+
 cdef void cython_muskingcunge(
-    float dt,
-		float qup,
-		float quc,
-		float qdp,
-		float ql,
-		float dx,
-		float bw,
-		float tw,
-		float twcc,
-		float n,
-		float ncc,
-		float cs,
-		float s0,
-		float velp,
-		float depthp,
+    const float dt,
+    const float qup,
+    const float quc,
+    const float qdp,
+    const float ql,
+    const float dx,
+    const float bw,
+    const float tw,
+    const float twcc,
+    const float n,
+    const float ncc,
+    const float cs,
+    const float s0,
+    const float velp,
+    const float depthp,
     QVD *rv,
 ) nogil:
     cdef int maxiter = 100
@@ -84,64 +118,100 @@ cdef void cython_muskingcunge(
     cdef float rerror = 1.0
     cdef int it, tries = 0
 
-    cdef float z, h, h_0
+    cdef float h, h_0
+    cdef float h_1
     cdef float qdc, velc, depthc
     cdef float C_pdot_Q
     cdef float R, twl
     cdef float bfd
-    cdef QC qc_struct
-    # initialize vars
-    qc_struct.Qj_0 = 0.0
-    qc_struct.Qj = 0.0
-    qc_struct.C1 = 0.0
-    qc_struct.C2 = 0.0
-    qc_struct.C3 = 0.0
-    qc_struct.C4 = 0.0
+    cdef QHC qc_struct_left
+    cdef QHC qc_struct_right
+    cdef channel_properties chan_struct
 
-    cdef QC *qc = &qc_struct
+    # populate channel properties
+    chan_struct.n = n
+    chan_struct.ncc = ncc
+    chan_struct.bw = bw
+    chan_struct.tw = tw
+    chan_struct.twcc = twcc
+
+    chan_struct.s0 = s0
+    chan_struct.sqr_s0 = sqrtf(chan_struct.s0)
+
+    if cs == 0:
+        chan_struct.z = 1
+    else:
+        chan_struct.z = 1/cs
+
+    chan_struct.sqr_1z2 = sqrtf(1.0 + (chan_struct.z * chan_struct.z))
+
+    if chan_struct.bw > chan_struct.tw:
+        chan_struct.bfd = chan_struct.bw * (1/0.00001)
+    elif chan_struct.bw == chan_struct.tw:
+        chan_struct.bfd = chan_struct.bw/(2*chan_struct.z)
+    else:
+        chan_struct.bfd = (chan_struct.tw - chan_struct.bw)/(2*chan_struct.z)
+
+    cdef channel_properties *chan = &chan_struct
+
+    # initialize vars
+    qc_struct_left.h = depthc * 0.67
+    qc_struct_left.Q_mc = 0.0
+    qc_struct_left.Q_normal = 0.0
+    qc_struct_left.Xmin = 0.0
+    qc_struct_left.X = 0.0
+    qc_struct_left.Km = 0.0
+    qc_struct_left.D = 0.0
+    qc_struct_left.ck = 0.0
+    qc_struct_left.cn = 0.0
+    qc_struct_left.C1 = 0.0
+    qc_struct_left.C2 = 0.0
+    qc_struct_left.C3 = 0.0
+    qc_struct_left.C4 = 0.0
+
+    qc_struct_right.h = (depthc * 1.33) + mindepth
+    qc_struct_right.Q_mc = 0.0
+    qc_struct_right.Q_normal = 0.0
+    qc_struct_right.Xmin = 0.25
+    qc_struct_right.X = 0.0
+    qc_struct_right.Km = 0.0
+    qc_struct_right.D = 0.0
+    qc_struct_right.ck = 0.0
+    qc_struct_right.cn = 0.0
+    qc_struct_right.C1 = 0.0
+    qc_struct_right.C2 = 0.0
+    qc_struct_right.C3 = 0.0
+    qc_struct_right.C4 = 0.0
+
+    cdef QHC *qc_left = &qc_struct_left
+    cdef QHC *qc_right = &qc_struct_right
 
     cdef float C1, C2, C3, C4
     cdef float Qj_0, Qj
 
-    if cs == 0:  # susceptible to float comparison error?
-        z = 1
-    else:
-        z = 1/cs
-
-    if bw > tw:
-        bfd = bw * (1/0.00001)
-    elif bw == tw:
-        bfd = bw/(2*z)
-    else:
-        bfd = (tw - bw)/(2*z)
-
     depthc = fmaxf(depthp, 0)
-    h = (depthc * 1.33) + mindepth # 4/3 ?
-    h_0 = depthc * 0.67  # 2/3 ?
 
     if ql > 0 or quc > 0 or qup > 0 or qdp > 0:
-
-        # These should not be carried between iterations --- see https://github.com/NCAR/wrf_hydro_nwm_public/pull/510
-        # WPC = 0
-        # AREAC = 0
 
         it = 0
 
         while rerror > 0.01 and aerror >= mindepth and it <= maxiter:
-            secant_h0(z, bw, bfd, twcc, s0, n, ncc, dt, 
-                      dx, qup, quc, qdp, ql, h_0,
-                      qc)
-            secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, 
-                      dx, qup, quc, qdp, ql, h, 
-                      qc)
+            compute_mc_flow(chan,
+                      dt,
+                      dx, qup, quc, qdp, ql,
+                      qc_left)
 
-            Qj_0 = qc.Qj_0
-            Qj = qc.Qj
+            qc_right.Q_j = qc_left.Q_mc
 
-            C1 = qc_struct.C1
-            C2 = qc_struct.C2
-            C3 = qc_struct.C3
-            C4 = qc_struct.C4
+            compute_mc_flow(chan,
+                      dt,
+                      dx, qup, quc, qdp, ql,
+                      qc_right)
+
+            Qj_0 = qc_left.Q_j
+            Qj = qc_right.Q_j
+            h_0 = qc_left.h
+            h = qc_right.h
 
             if Qj_0 - Qj != 0:
                 h_1 = h - (Qj * (h_0 - h)) / (Qj_0 - Qj)
@@ -161,6 +231,8 @@ cdef void cython_muskingcunge(
             h_0 = max(0, h)
             h = max(0, h_1)
             it += 1
+            qc_left.h = h_0
+            qc_right.h = h
 
             if h < mindepth:
                 if it >= maxiter:
@@ -176,6 +248,12 @@ cdef void cython_muskingcunge(
                         continue
                     else:
                         break
+
+        C1 = qc_struct_right.C1
+        C2 = qc_struct_right.C2
+        C3 = qc_struct_right.C3
+        C4 = qc_struct_right.C4
+
         C_pdot_Q = (C1 * qup) + (C2 * quc) + (C3 * qdp)
         qdc = C_pdot_Q + C4
         if qdc < 0:
@@ -184,9 +262,9 @@ cdef void cython_muskingcunge(
             else:
                 qdc = max((C1 * qup) * (C2 * quc) + C4, (C1 * qup) + (C3 * qdp) + C4)
 
-        twl = bw + (2 * z * h)
-        R = (0.5 * h * (bw + twl)) / (bw + 2.0 * sqrtf(powf(((twl - bw) * 0.5), 2.0) + (h * h)))
-        velc = (1 / n) * (powf(R, 2.0/3.0)) * sqrtf(s0)
+        twl = chan_struct.bw + (2 * chan_struct.z * h)
+        R = (0.5 * h * (chan_struct.bw + twl)) / (chan_struct.bw + 2.0 * sqrtf((((twl - chan_struct.bw) * 0.5) ** 2.0) + (h * h)))
+        velc = (1 / chan_struct.n) * ((R ** 2.0/3.0)) * chan_struct.sqr_s0
         depthc = h
     else:
         qdc = 0
@@ -198,176 +276,126 @@ cdef void cython_muskingcunge(
     rv.depthc = depthc
 
 
-cdef inline void secant_h0(
-    float z,
-		float bw,
-		float bfd,
-		float twcc,
-		float s0,
-		float n,
-		float ncc,
-		float dt,
-		float dx,
-		float qup,
-		float quc,
-		float qdp,
-		float ql,
-		float h_0,
-		QC* qc,
+cdef inline void compute_mc_flow(
+    const channel_properties* chan,
+    const float dt,
+    const float dx,
+    const float qup,
+    const float quc,
+    const float qdp,
+    const float ql,
+    QHC* qc,
 ) nogil:
-    """
-    Returns Qj_0, C
-    """
-    cdef float twl, AREA, AREAC, WP, WPC, R, Ck, X, Km, D
+    cdef hydraulic_geometry hg_struct
+    cdef hydraulic_geometry* hg = &hg_struct
 
-    # top surface water width of the channel inflow
-    twl = bw + 2*z*h_0
+    compute_hydraulic_geometry(qc.h, chan, hg)
+    compute_celerity(chan, hg, qc)
+    qc.cn = qc.ck * (dt/dx)
 
-    cdef float sqr_s0 = sqrtf(s0)
-    cdef float sqr_1z2 = sqrtf(1.0 + (z * z))
-    cdef float areasum
+    # cdef float C_dot_Q = (qc.C1 * qup) + (qc.C2 * quc) + (qc.C3 * qdp) + qc.C4
+    # cdef float areasum = 1/(hg.AREA+hg.AREAC)
 
-    if h_0 > bfd:
-        # hydraulic radius, R
-        AREA = (bw+bfd*z) * bfd
-        AREAC = twcc * (h_0 - bfd)
-        WP = bw + 2.0 * bfd * sqrtf(1 + (z * z))
-        WPC = twcc + (2 * (h_0 - bfd))
-        R = (AREA + AREAC)/(WP + WPC)
 
-        # kinematic celerity, c
-        areasum = (1/(AREA + AREAC))
-        Ck = fmaxf(0.0, ((sqr_s0 / n) * ((5./3.) * powf(R,(2./3.)) -
-                         ((2./3.) * powf(R,(5. / 3.)) * (2.0 * sqr_1z2 / (bw + 2.0 * bfd * z)))) * AREA
-                       + ((sqr_s0 / ncc) * (5. / 3.) * powf((h_0 - bfd),(2. / 3.))) * AREAC) * areasum)
-
-        # MC parameter, X
-        X = fminf(0.5, fmaxf(0.0, 0.5 * (1 - (0.5 * (qc.Qj_0 / (twcc * s0 * Ck * dx))))))
+    cdef float tw
+    if qc.h > chan.bfd:
+        tw = chan.twcc
     else:
-        # hydraulic radius, R
-        AREA = (bw + h_0 * z) * h_0
-        AREAC = 0
-        WP = bw + 2 * h_0 * sqr_1z2
-        WPC = 0
-        if WP > 0:
-            R = AREA / WP
-        else:
-            R = 0
+        tw = hg.twl
 
-        # kinematic celerity, c
-        if h_0 > 0:
-            Ck = fmaxf(0.0, (sqr_s0 / n) * ((5. / 3.) * powf(R,(2. / 3.)) -
-                                        ((2. / 3.) * powf(R,(5. / 3.)) * (
-                                                    2.0 * sqr_1z2 / (bw + 2.0 * h_0 * z)))))
-            X = fminf(0.5, fmaxf(0.0, 0.5 * (1 - (0.5 * (qc.Qj_0 / (twl * s0 * Ck * dx))))))
-
-        else:
-            Ck = 0
-            X = 0.5
-
-    if Ck > 0:
-        Km = fmaxf(dt, dx/Ck)
+    cdef float Xmin = qc.Xmin
+    cdef float Xtmp = 0.5 * (1 - (qc.Q_j / (2 * tw * chan.s0 * qc.ck * dx)))
+    if Xtmp <= Xmin:
+       qc.X = Xmin
+    elif Xtmp > Xmin and Xtmp < 0.5:
+       qc.X = Xtmp
     else:
-        Km = dt
+       qc.X = 0.5
 
-    D = (Km*(1.0 - X) + 0.5 * dt)              # --seconds
-
-    qc.C1 = (Km*X + dt/2)/D
-    qc.C2 = (dt/2 - Km*X)/D
-    qc.C3 = (Km*(1-X)-dt/2)/D
-    qc.C4 = (ql*dt)/D
-
-
-    cdef float C_dot_Q
-
-    if WP + WPC > 0:
-        C_dot_Q = (qc.C1 * qup) + (qc.C2 * quc) + (qc.C3 * qdp) + qc.C4
-        qc.Qj_0 = C_dot_Q - ((1 / (((WP * n) + (WPC * ncc)) / (WP + WPC))) *
-                                                              (AREA + AREAC) * (powf(R,(2./ 3.))) * sqr_s0)
-
-
-
-cdef inline void secant_h(
-    float z,
-		float bw,
-		float bfd,
-		float twcc,
-		float s0,
-		float n,
-		float ncc,
-		float dt,
-		float dx,
-		float qup,
-		float quc,
-		float qdp,
-		float ql,
-		float h,
-    QC* qc,
-) nogil:
-    cdef float twl, AREA, AREAC, WP, WPC, R, Ck, X, Km, D
-    cdef float areasum
-
-    twl = bw + 2.0 * z * h
-
-    cdef float sqr_s0 = sqrtf(s0)
-    cdef float sqr_1z2 = sqrtf(1 + powf(z,2))
-    cdef float C_dot_Q = (qc.C1 * qup) + (qc.C2 * quc) + (qc.C3 * qdp) + qc.C4
-
-    if h > bfd:
-        AREA = (bw + bfd * z) * bfd
-        AREAC = (twcc * (h-bfd))
-        WP = (bw + 2.0 * bfd * sqr_1z2)
-        WPC = twcc + (2.0*(h-bfd))
-        R = (AREA + AREAC)/(WP + WPC)
-
-        areasum = 1/(AREA+AREAC)
-        Ck = fmaxf(0.0, ((sqr_s0 / n) * ((5. / 3.) * powf(R,(2. / 3.)) -
-                                         ((2. / 3.) * powf(R,(5. / 3.)) * (
-                                                     2.0 * sqr_1z2 / (bw + 2.0 * bfd * z)))) * AREA
-                       + ((sqr_s0 / (ncc)) * (5. / 3.) * powf((h - bfd),(2. / 3.))) * AREAC) *areasum)
-
-        X = fminf(0.5, fmaxf(0.25, 0.5 * (1 - (C_dot_Q / (2 * twcc * s0 * Ck * dx)))))
-
+    cdef float tmp1, tmp2, tmp3
+    qc.Km = dx/qc.ck
+    if qc.ck > 0 and dt < qc.Km:
+        dt2 = dt/2.0
+        tmp1 = (dt - 2.0 * qc.Km * qc.X)
+        tmp2 = qc.Km * (1 - qc.X)
+        tmp3 = tmp1 + 2.0 * qc.Km
+        qc.C1 = (dt + 2 * qc.Km * qc.X) / tmp3
+        qc.C2 = tmp1 / tmp3
+        qc.C3 = (tmp2 - dt2) / (tmp2 + dt2)
+        qc.C4 = (2 * ql * dt) / tmp3
     else:
-        AREA = (bw + h * z ) * h
-        AREAC = 0
-        WP = (bw + 2.0 * h * sqr_1z2)
-        WPC = 0
-        if WP > 0:
-            R = AREA/WP
-        else:
-            R = 0
+        qc.D = 1.5 - qc.X    # -- seconds
+        qc.C1 = (qc.X + 0.5)/qc.D
+        qc.C2 = (0.5 - qc.X)/qc.D
+        qc.C3 = qc.C2
+        qc.C4 = ql/qc.D
 
-        if h > 0:
-            Ck = fmaxf(0.0, (sqr_s0 / n) * ((5. / 3.) * powf(R,(2. / 3.)) -
-                                            ((2. / 3.) * powf(R,(5./ 3.)) * (
-                                                        2.0 * sqr_1z2 / (bw + 2.0 * h * z)))))
-        else:
-            Ck = 0
-
-        if Ck > 0:
-            X = fminf(0.5, fmaxf(0.25, 0.5 * (1 - (C_dot_Q / (2 * twl * s0 * Ck * dx)))))
-        else:
-            X = 0.5
-
-    if Ck > 0:
-        Km = fmaxf(dt, dx/Ck)
-    else:
-        Km = dt
-    D = 1/(Km*(1-X) + 0.5*dt)
-
-    qc.C1 = (Km*X + 0.5 *dt) * D
-    qc.C2 = (0.5 * dt - Km*X) * D
-    qc.C3 = (Km*(1.0-X)-0.5 * dt) * D
-    qc.C4 = (ql*dt) * D
-
+#     if(qc.ck > 0.0):
+#         qc.Km = fmaxf(dt,dx/qc.ck)
+#     else:
+#         qc.Km = dt
+#     qc.D = (qc.Km*(1.0 - qc.X) + dt/2.0)
+#     qc.C1 =  (qc.Km*qc.X + dt/2.0)/qc.D
+#     qc.C2 =  (dt/2.0 - qc.Km*qc.X)/qc.D
+#     qc.C3 =  (qc.Km*(1.0-qc.X)-dt/2.0)/qc.D
+#     qc.C4 =  (ql*dt)/qc.D
 
     cdef float t
-
     t = (qc.C1 * qup) + (qc.C2 * quc) + (qc.C3 * qdp)
-    if qc.C4 < 0 and fabsf(qc.C4) > t:
-        qc.C4 = -t
+    qc.C4 = fmaxf(-t, qc.C4) # qc.C4 cannot be more negative than the sum of other terms
 
-    if WP + WPC > 0:
-        qc.Qj = (t + qc.C4) - (((WP + WPC)/(((WP*n)+(WPC*ncc)))) *
-                    (AREA+AREAC) * (powf(R,(2./3.))) * sqr_s0)
+    if hg.WP + hg.WPC > 0:
+        qc.Q_mc = (t + qc.C4)
+        qc.Q_normal = (((hg.WP + hg.WPC)/(((hg.WP*chan.n)+(hg.WPC*chan.ncc)))) *
+                    (hg.AREA+hg.AREAC) * ((hg.R**(2./3.))) * chan.sqr_s0)
+        qc.Q_j = qc.Q_mc - qc.Q_normal
+
+
+cdef inline void compute_celerity(
+    const channel_properties* chan,
+    const hydraulic_geometry* hg,
+    QHC* qc,
+) nogil:
+
+    if (qc.h > 0.0):
+        qc.ck = fmaxf(0,(chan.sqr_s0/chan.n)*
+            ((5.0/3.0)*hg.R**(2.0/3.0) -
+            ((2.0/3.0)*hg.R**(5.0/3.0) *
+            (2.0*chan.sqr_1z2/(chan.bw+2.0*hg.h_lt_bf*chan.z)))))
+        if (qc.h > chan.bfd):
+            qc.ck = max(0.0,(qc.ck
+                    * hg.AREA
+                    + ((chan.sqr_s0/(chan.ncc))
+                    * (5.0/3.0)*(hg.h_gt_bf)**(2.0/3.0))
+                    * hg.AREAC)
+                    / (hg.AREA+hg.AREAC))
+    else:
+        qc.ck = 0.0
+
+
+cdef inline void compute_hydraulic_geometry(
+    const float h,
+    const channel_properties* chan,
+    hydraulic_geometry* hg,
+) nogil:
+
+     hg.twl = chan.bw + 2*chan.z*h
+
+     hg.h_gt_bf = fmaxf(h - chan.bfd, 0)
+     hg.h_lt_bf = fminf(chan.bfd, h)
+
+     hg.AREA = (chan.bw + hg.h_lt_bf * chan.z) * hg.h_lt_bf
+
+     hg.WP = (chan.bw + 2 * hg.h_lt_bf * chan.sqr_1z2)
+
+     hg.AREAC = (chan.twcc * hg.h_gt_bf)
+
+     if(hg.h_gt_bf > 0):
+         hg.WPC = chan.twcc + (2 * (hg.h_gt_bf))
+     else:
+         hg.WPC = 0
+
+     hg.R   = (hg.AREA + hg.AREAC)/(hg.WP + hg.WPC)
+     # R = (h*(bw + twl) / 2.0_prec) / (bw + 2.0_prec*(((twl - bw) / 2.0_prec)**2.0_prec + h**2.0_prec)**0.5_prec)
+
+

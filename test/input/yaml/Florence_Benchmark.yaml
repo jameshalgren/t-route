@@ -1,13 +1,14 @@
 ---
 # Initial input parameters
 run_parameters:
-    parallel_compute_method: by-network
     verbose: true
     showtiming: true
     debuglevel: 1
-    break_network_at_waterbodies: true
-    compute_method: V02-structured
+    # break_network_at_waterbodies: true
+    # compute_method: V02-structured
     assume_short_ts: true
+    parallel_compute_method: by-subnetwork-jit-clustered
+    subnetwork_target_size: 100
     qts_subdivisions: 12
     dt: 300
     nts: 8640
@@ -94,8 +95,8 @@ restart_parameters:
 # Output files to check parity
 parity_parameters:
     parity_check_file: "../../test/input/florence_933020089/OUTPUT/SeptemberFlorenceStreamflow_wDates.csv" 
-    # parity_check_compare_node: 8777701
-    parity_check_compare_node: 933020089
+    parity_check_compare_node: 8777701
+    # parity_check_compare_node: 933020089
     # WRF-Hydro files in comments below for example
     # parity_check_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
     # parity_check_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
