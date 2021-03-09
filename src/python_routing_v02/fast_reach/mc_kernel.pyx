@@ -260,7 +260,7 @@ cdef void cython_muskingcunge(
             if C4 < 0 and fabsf(C4) > C_pdot_Q:
                 qdc = 0
             else:
-                qdc = max((C1 * qup) * (C2 * quc) + C4, (C1 * qup) + (C3 * qdp) + C4)
+                qdc = max((C1 * qup) + (C2 * quc) + C4, (C1 * qup) + (C3 * qdp) + C4)
 
         twl = chan_struct.bw + (2 * chan_struct.z * h)
         R = (0.5 * h * (chan_struct.bw + twl)) / (chan_struct.bw + 2.0 * sqrtf((((twl - chan_struct.bw) * 0.5) ** 2.0) + (h * h)))
