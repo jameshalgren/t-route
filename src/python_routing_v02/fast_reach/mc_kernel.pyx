@@ -356,9 +356,15 @@ cdef inline void compute_mc_flow(
 
     if hg.WP + hg.WPC > 0:
         qc.Q_mc = (t + qc.C4)
-        qc.Q_normal = (((hg.WP + hg.WPC)/(((hg.WP*chan.n)+(hg.WPC*chan.ncc)))) *
-                    (hg.AREA+hg.AREAC) * ((hg.R**(2./3.))) * chan.sqrt_s0)
+        qc.Q_normal = (
+            (1.0 / (((hg.WP * chan.n) + (hg.WPC * chan.ncc)) / (hg.WP + hg.WPC)))
+            * (hg.AREA + hg.AREAC)
+            * (hg.R ** (2.0 / 3.0))
+            * chan.sqrt_s0
+        )
         qc.Q_j = qc.Q_mc - qc.Q_normal
+    else:
+        qc.Q_j = 0.0
 
 
 cdef inline void compute_celerity(
