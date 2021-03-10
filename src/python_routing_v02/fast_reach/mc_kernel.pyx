@@ -188,6 +188,9 @@ cdef void cython_muskingcunge(
     cdef QHC *qc_left = &qc_struct_left
     cdef QHC *qc_right = &qc_struct_right
 
+    cdef hydraulic_geometry hg_struct
+    cdef hydraulic_geometry *hg = &hg_struct
+
     cdef float C1, C2, C3, C4
     cdef float Qj_0, Qj
 
@@ -198,17 +201,23 @@ cdef void cython_muskingcunge(
         it = 0
 
         while rerror > 0.01 and aerror >= mindepth and it <= maxiter:
-            compute_mc_flow(chan,
-                      dt,
-                      dx, qup, quc, qdp, ql,
-                      qc_left)
+            compute_mc_flow(
+                chan,
+                dt,
+                dx, qup, quc, qdp, ql,
+                hg,
+                qc_left,
+            )
 
             qc_right.Q_j = qc_left.Q_mc
 
-            compute_mc_flow(chan,
-                      dt,
-                      dx, qup, quc, qdp, ql,
-                      qc_right)
+            compute_mc_flow(
+                chan,
+                dt,
+                dx, qup, quc, qdp, ql,
+                hg,
+                qc_right,
+            )
 
             Qj_0 = qc_left.Q_j
             Qj = qc_right.Q_j
@@ -286,10 +295,9 @@ cdef inline void compute_mc_flow(
     const float quc,
     const float qdp,
     const float ql,
-    QHC* qc,
+    hydraulic_geometry *hg,
+    QHC *qc,
 ) nogil:
-    cdef hydraulic_geometry hg_struct
-    cdef hydraulic_geometry* hg = &hg_struct
 
     compute_hydraulic_geometry(qc.h, chan, hg)
     compute_celerity(chan, hg, qc)
@@ -354,9 +362,9 @@ cdef inline void compute_mc_flow(
 
 
 cdef inline void compute_celerity(
-    const channel_properties* chan,
-    const hydraulic_geometry* hg,
-    QHC* qc,
+    const channel_properties *chan,
+    const hydraulic_geometry *hg,
+    QHC *qc,
 ) nogil:
 
     if (qc.h > 0.0):
@@ -377,8 +385,8 @@ cdef inline void compute_celerity(
 
 cdef inline void compute_hydraulic_geometry(
     const float h,
-    const channel_properties* chan,
-    hydraulic_geometry* hg,
+    const channel_properties *chan,
+    hydraulic_geometry *hg,
 ) nogil:
 
      hg.twl = chan.bw + 2*chan.z*h
