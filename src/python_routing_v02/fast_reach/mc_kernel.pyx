@@ -373,20 +373,68 @@ cdef inline void compute_celerity(
     QHC *qc,
 ) nogil:
 
-    if (qc.h > 0.0):
-        qc.ck = fmaxf(0,(chan.sqrt_s0/chan.n)*
-            ((5.0/3.0)*hg.R**(2.0/3.0) -
-            ((2.0/3.0)*hg.R**(5.0/3.0) *
-            (2.0*chan.sqrt_1z2/(chan.bw+2.0*hg.h_lt_bf*chan.z)))))
-        if (qc.h > chan.bfd):
-            qc.ck = max(0.0,(qc.ck
-                    * hg.AREA
-                    + ((chan.sqrt_s0/(chan.ncc))
-                    * (5.0/3.0)*(hg.h_gt_bf)**(2.0/3.0))
-                    * hg.AREAC)
-                    / (hg.AREA+hg.AREAC))
+    # if (qc.h > 0.0):
+    #     qc.ck = fmaxf(0,(chan.sqrt_s0/chan.n)*
+    #         ((5.0/3.0)*hg.R**(2.0/3.0) -
+    #         ((2.0/3.0)*hg.R**(5.0/3.0) *
+    #         (2.0*chan.sqrt_1z2/(chan.bw+2.0*hg.h_lt_bf*chan.z)))))
+    #     if (qc.h > chan.bfd):
+    #         qc.ck = fmaxf(0.0,(qc.ck
+    #                 * hg.AREA
+    #                 + ((chan.sqrt_s0/(chan.ncc))
+    #                 * (5.0/3.0)*(hg.h_gt_bf)**(2.0/3.0))
+    #                 * hg.AREAC)
+    #                 / (hg.AREA+hg.AREAC))
+    # else:
+    #     qc.ck = 0.0
+
+    if qc.h > chan.bfd:
+        qc.ck = fmaxf(
+            0.0,
+            (
+                (sqrt_s0 / chan.n)
+                * (
+                    (5.0 / 3.0) * hg.R ** (2.0 / 3.0)
+                    - (
+                        (2.0 / 3.0)
+                        * hg.R ** (5.0 / 3.0)
+                        * (
+                            2.0
+                            * sqrt_1z2
+                            / (chan.bw + 2.0 * chan.bfd * chan.z)
+                        )
+                    )
+                )
+                * hg.AREA
+                + (
+                    (sqrt_s0 / chan.ncc)
+                    * (5.0 / 3.0)
+                    * (qc.h - chan.bfd) ** (2.0 / 3.0)
+                )
+                * hg.AREAC
+            )
+            / (hg.AREA + hg.AREAC),
+        )
     else:
-        qc.ck = 0.0
+        if qc.h > 0.0:  # avoid divide by zero
+            qc.ck = fmaxf(
+                0.0,
+                (sqrt_s0 / chan.n)
+                * (
+                    (5.0 / 3.0) * hg.R ** (2.0 / 3.0)
+                    - (
+                        (2.0 / 3.0)
+                        * hg.R ** (5.0 / 3.0)
+                        * (
+                            2.0
+                            * sqrt_1z2
+                            / (chan.bw + 2.0 * qc.h * chan.z)
+                        )
+                    )
+                ),
+            )
+        else:
+            qc.ck = 0.0
 
 
 cdef inline void compute_hydraulic_geometry(
