@@ -155,7 +155,7 @@ cdef void cython_muskingcunge(
     cdef channel_properties *chan = &chan_struct
 
     # initialize vars
-    qc_struct_left.h = depthc * 0.67
+    qc_struct_left.h = depthp * 0.67
     qc_struct_left.Q_mc = 0.0
     qc_struct_left.Q_normal = 0.0
     qc_struct_left.Q_j = 0.0
@@ -170,7 +170,7 @@ cdef void cython_muskingcunge(
     qc_struct_left.C3 = 0.0
     qc_struct_left.C4 = 0.0
 
-    qc_struct_right.h = (depthc * 1.33) + mindepth
+    qc_struct_right.h = (depthp * 1.33) + mindepth
     qc_struct_right.Q_mc = 0.0
     qc_struct_right.Q_normal = 0.0
     qc_struct_right.Q_j = 0.0
@@ -392,7 +392,7 @@ cdef inline void compute_celerity(
         qc.ck = fmaxf(
             0.0,
             (
-                (sqrt_s0 / chan.n)
+                (chan.sqrt_s0 / chan.n)
                 * (
                     (5.0 / 3.0) * hg.R ** (2.0 / 3.0)
                     - (
@@ -400,14 +400,14 @@ cdef inline void compute_celerity(
                         * hg.R ** (5.0 / 3.0)
                         * (
                             2.0
-                            * sqrt_1z2
+                            * chan.sqrt_1z2
                             / (chan.bw + 2.0 * chan.bfd * chan.z)
                         )
                     )
                 )
                 * hg.AREA
                 + (
-                    (sqrt_s0 / chan.ncc)
+                    (chan.sqrt_s0 / chan.ncc)
                     * (5.0 / 3.0)
                     * (qc.h - chan.bfd) ** (2.0 / 3.0)
                 )
@@ -419,7 +419,7 @@ cdef inline void compute_celerity(
         if qc.h > 0.0:  # avoid divide by zero
             qc.ck = fmaxf(
                 0.0,
-                (sqrt_s0 / chan.n)
+                (chan.sqrt_s0 / chan.n)
                 * (
                     (5.0 / 3.0) * hg.R ** (2.0 / 3.0)
                     - (
@@ -427,7 +427,7 @@ cdef inline void compute_celerity(
                         * hg.R ** (5.0 / 3.0)
                         * (
                             2.0
-                            * sqrt_1z2
+                            * chan.sqrt_1z2
                             / (chan.bw + 2.0 * qc.h * chan.z)
                         )
                     )
