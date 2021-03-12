@@ -159,7 +159,7 @@ cdef void cython_muskingcunge(
     qc_struct_left.Q_mc = 0.0
     qc_struct_left.Q_normal = 0.0
     qc_struct_left.Q_j = 0.0
-    qc_struct_left.Xmin = 0.0
+    qc_struct_left.Xmin = 0.25
     qc_struct_left.X = 0.0
     qc_struct_left.Km = 0.0
     qc_struct_left.D = 0.0
@@ -174,7 +174,7 @@ cdef void cython_muskingcunge(
     qc_struct_right.Q_mc = 0.0
     qc_struct_right.Q_normal = 0.0
     qc_struct_right.Q_j = 0.0
-    qc_struct_right.Xmin = 0.25
+    qc_struct_right.Xmin = 0.0
     qc_struct_right.X = 0.0
     qc_struct_right.Km = 0.0
     qc_struct_right.D = 0.0
