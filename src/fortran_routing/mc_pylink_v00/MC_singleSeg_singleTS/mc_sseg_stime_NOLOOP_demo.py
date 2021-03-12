@@ -1,4 +1,5 @@
 import traceback
+import reach
 
 debuglevel = 0
 COMPILE = True
@@ -157,6 +158,7 @@ def singlesegment(
 
     return rv[:3]
 
+
 def main():
     """
       No Inputs: 
@@ -303,21 +305,47 @@ def main():
     )
 
     print("\nSecond set of inputs activating compound channel")
-    dt = 60.0  # Time step
-    dx = 1800.0  # segment length
-    bw = 112.0  # Trapezoidal bottom width
-    tw = 248.0  # Channel top width (at bankfull)
-    twcc = 623.5999755859375  # Flood plain width
-    n_manning = 0.02800000086426735  # manning roughness of channel
-    n_manning_cc = 0.03136000037193298  # manning roughness of floodplain
-    cs = 0.42  # channel trapezoidal sideslope
-    s0 = 0.007999999690800905  # downstream segment bed slope
-    qlat = 40.0  # Lateral inflow in this time step
+    param_set = [
+        {
+            "precision": "single",
+            "dt": 60.0,  # Time step
+            "dx": 1800.0,  # segment length
+            "bw": 112.0,  # Trapezoidal bottom width
+            "tw": 248.0,  # Channel top width (at bankfull)
+            "twcc": 623.5999755859375,  # Flood plain width
+            "n_manning": 0.02800000086426735,  # manning roughness of channel
+            "n_manning_cc": 0.03136000037193298,  # manning roughness of floodplain
+            "cs": 0.42,  # channel trapezoidal sideslope
+            "s0": 0.007999999690800905,  # downstream segment bed slope
+            "qlat": 40.0,  # Lateral inflow in this time step
+            "qup": 45009,
+            "quc": 50098,
+            "qdp": 50014,
+            "depthp": 30,
+        },
+    ]
 
-    qup = 45009
-    quc = 50098
-    qdp = 50014
-    depthp = 30
+    for p in param_set:
+        compare_methods(**p)
+
+
+def compare_methods(
+    precision,
+    dt,
+    qup,
+    quc,
+    qdp,
+    qlat,
+    dx,
+    bw,
+    tw,
+    twcc,
+    n_manning,
+    n_manning_cc,
+    cs,
+    s0,
+    depthp,
+):
 
     # run M-C model
     qdc, velc, depthc = singlesegment(
@@ -363,6 +391,32 @@ def main():
     )
     print(
         "real {} precision computed via WRF-Hydro method q: {} vel: {} depth: {}".format(
+            precision, qdc, velc, depthc
+        )
+    )
+    # run M-C model
+    rv = reach.compute_reach_kernel(
+        # precision=precision,
+        dt,
+        qup,
+        quc,
+        qdp,
+        qlat,
+        dx,
+        bw,
+        tw,
+        twcc,
+        n_manning,
+        n_manning_cc,
+        cs,
+        s0,
+        0,
+        depthp,
+    )
+    qdc, velc, depthc = rv["qdc"], rv["velc"], rv["depthc"]
+
+    print(
+        "real {} precision computed via new cython method q: {} vel: {} depth: {}".format(
             precision, qdc, velc, depthc
         )
     )
