@@ -1,5 +1,6 @@
 import traceback
 import reach
+import test_suite_parameter_set
 
 debuglevel = 0
 COMPILE = True
@@ -325,6 +326,9 @@ def main():
         },
     ]
 
+    compare_methods(**param_set[0])
+
+    param_set = test_suite_parameter_set.test_suite_parameter_set
     for p in param_set:
         compare_methods(**p)
 
@@ -348,7 +352,7 @@ def compare_methods(
 ):
 
     # run M-C model
-    qdc, velc, depthc = singlesegment(
+    qdc1, velc1, depthc1 = singlesegment(
         # precision=precision,
         dt=dt,
         qup=qup,
@@ -366,13 +370,13 @@ def compare_methods(
         depthp=depthp,
     )
 
-    print(
-        "real {} precision computed via updated method q: {} vel: {} depth: {}".format(
-            precision, qdc, velc, depthc
-        )
-    )
+    # print(
+        # "real {} precision computed via updated method q: {} vel: {} depth: {}".format(
+            # precision, qdc1, velc1, depthc1
+        # )
+    # )
     # run M-C model
-    qdc, velc, depthc = singlesegment_wrf(
+    qdc_t, velc_t, depthc_t = singlesegment_wrf(
         # precision=precision,
         dt=dt,
         qup=qup,
@@ -389,12 +393,14 @@ def compare_methods(
         s0=s0,
         depthp=depthp,
     )
-    print(
-        "real {} precision computed via WRF-Hydro method q: {} vel: {} depth: {}".format(
-            precision, qdc, velc, depthc
-        )
-    )
-    # run M-C model
+
+    # print(
+        # "real {} precision computed via WRF-Hydro method q: {} vel: {} depth: {}".format(
+            # precision, qdc_t, velc_t, depthc_t
+        # )
+    # )
+
+    # run M-C cython model
     rv = reach.compute_reach_kernel(
         # precision=precision,
         dt,
@@ -413,11 +419,17 @@ def compare_methods(
         0,
         depthp,
     )
-    qdc, velc, depthc = rv["qdc"], rv["velc"], rv["depthc"]
+    qdc_c, velc_c, depthc_c = rv["qdc"], rv["velc"], rv["depthc"]
+
+    # print(
+        # "real {} precision computed via new cython method q: {} vel: {} depth: {}".format(
+            # precision, qdc_c, velc_c, depthc_c
+        # )
+    # )
 
     print(
-        "real {} precision computed via new cython method q: {} vel: {} depth: {}".format(
-            precision, qdc, velc, depthc
+        "original minus cython method q: {0: 8.15f} vel: {1: 8.15f} depth: {2: 8.15f}".format(
+            qdc1 - qdc_c, velc1 - velc_c, depthc1 - depthc_c
         )
     )
 
