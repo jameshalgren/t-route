@@ -136,14 +136,14 @@ cdef void cython_muskingcunge(
     chan_struct.twcc = twcc
 
     chan_struct.s0 = s0
-    chan_struct.sqrt_s0 = sqrtf(chan_struct.s0)
+    chan_struct.sqrt_s0 = sqrt(chan_struct.s0)
 
     if cs == 0:
         chan_struct.z = 1
     else:
         chan_struct.z = 1/cs
 
-    chan_struct.sqrt_1z2 = sqrtf(1.0 + (chan_struct.z * chan_struct.z))
+    chan_struct.sqrt_1z2 = sqrt(1.0 + (chan_struct.z * chan_struct.z))
 
     if chan_struct.bw > chan_struct.tw:
         chan_struct.bfd = chan_struct.bw * (1/0.00001)
@@ -194,7 +194,7 @@ cdef void cython_muskingcunge(
     cdef float C1, C2, C3, C4
     cdef float Qj_0, Qj
 
-    depthc = fmaxf(depthp, 0)
+    depthc = max(depthp, 0)
 
     if ql > 0 or quc > 0 or qup > 0 or qdp > 0:
 
@@ -233,8 +233,8 @@ cdef void cython_muskingcunge(
                 h_1 = h
 
             if h > 0:
-                rerror = fabsf((h_1 - h) * (1/h))
-                aerror = fabsf(h_1 - h)
+                rerror = fabs((h_1 - h) * (1/h))
+                aerror = fabs(h_1 - h)
             else:
                 rerror = 0
                 aerror = 0.9
@@ -268,14 +268,14 @@ cdef void cython_muskingcunge(
         C_pdot_Q = (C1 * qup) + (C2 * quc) + (C3 * qdp)
         qdc = C_pdot_Q + C4
         if qdc < 0:
-            if C4 < 0 and fabsf(C4) > C_pdot_Q:
+            if C4 < 0 and fabs(C4) > C_pdot_Q:
                 qdc = 0
             else:
                 qdc = max((C1 * qup) + (C2 * quc) + C4, (C1 * qup) + (C3 * qdp) + C4)
 
         twl = chan_struct.bw + (2 * chan_struct.z * h)
-        R = (0.5 * h * (chan_struct.bw + twl)) / (chan_struct.bw + 2.0 * sqrtf((((twl - chan_struct.bw) * 0.5) ** 2.0) + (h * h)))
-        velc = (1 / chan_struct.n) * ((R ** 2.0/3.0)) * chan_struct.sqrt_s0
+        R = (0.5 * h * (chan_struct.bw + twl)) / (chan_struct.bw + 2.0 * sqrt((((twl - chan_struct.bw) * 0.5) ** 2.0) + (h * h)))
+        velc = (1 / chan_struct.n) * ((R ** (2.0/3.0))) * chan_struct.sqrt_s0
         depthc = h
     else:
         qdc = 0
@@ -341,7 +341,7 @@ cdef inline void compute_mc_flow(
         qc.C4 = ql/qc.D
 
 #     if(qc.ck > 0.0):
-#         qc.Km = fmaxf(dt,dx/qc.ck)
+#         qc.Km = max(dt,dx/qc.ck)
 #     else:
 #         qc.Km = dt
 #     qc.D = (qc.Km*(1.0 - qc.X) + dt/2.0)
@@ -352,7 +352,7 @@ cdef inline void compute_mc_flow(
 
     cdef float t
     t = (qc.C1 * qup) + (qc.C2 * quc) + (qc.C3 * qdp)
-    qc.C4 = fmaxf(-t, qc.C4) # qc.C4 cannot be more negative than the sum of other terms
+    qc.C4 = max(-t, qc.C4) # qc.C4 cannot be more negative than the sum of other terms
 
     if hg.WP + hg.WPC > 0:
         qc.Q_mc = (t + qc.C4)
@@ -374,12 +374,12 @@ cdef inline void compute_celerity(
 ) nogil:
 
     # if (qc.h > 0.0):
-    #     qc.ck = fmaxf(0,(chan.sqrt_s0/chan.n)*
+    #     qc.ck = max(0,(chan.sqrt_s0/chan.n)*
     #         ((5.0/3.0)*hg.R**(2.0/3.0) -
     #         ((2.0/3.0)*hg.R**(5.0/3.0) *
     #         (2.0*chan.sqrt_1z2/(chan.bw+2.0*hg.h_lt_bf*chan.z)))))
     #     if (qc.h > chan.bfd):
-    #         qc.ck = fmaxf(0.0,(qc.ck
+    #         qc.ck = max(0.0,(qc.ck
     #                 * hg.AREA
     #                 + ((chan.sqrt_s0/(chan.ncc))
     #                 * (5.0/3.0)*(hg.h_gt_bf)**(2.0/3.0))
@@ -389,7 +389,7 @@ cdef inline void compute_celerity(
     #     qc.ck = 0.0
 
     if qc.h > chan.bfd:
-        qc.ck = fmaxf(
+        qc.ck = max(
             0.0,
             (
                 (chan.sqrt_s0 / chan.n)
@@ -417,7 +417,7 @@ cdef inline void compute_celerity(
         )
     else:
         if qc.h > 0.0:  # avoid divide by zero
-            qc.ck = fmaxf(
+            qc.ck = max(
                 0.0,
                 (chan.sqrt_s0 / chan.n)
                 * (
@@ -445,8 +445,8 @@ cdef inline void compute_hydraulic_geometry(
 
      hg.twl = chan.bw + 2*chan.z*h
 
-     hg.h_gt_bf = fmaxf(h - chan.bfd, 0)
-     hg.h_lt_bf = fminf(chan.bfd, h)
+     hg.h_gt_bf = max(h - chan.bfd, 0)
+     hg.h_lt_bf = min(chan.bfd, h)
 
      hg.AREA = (chan.bw + hg.h_lt_bf * chan.z) * hg.h_lt_bf
 
