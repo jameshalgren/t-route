@@ -31,6 +31,65 @@ cdef void muskingcunge(
         float cn = 0.0
         float X = 0.0
 
+    c_muskingcungenwm(
+        &dt,
+        &qup,
+        &quc,
+        &qdp,
+        &ql,
+        &dx,
+        &bw,
+        &tw,
+        &twcc,
+        &n,
+        &ncc,
+        &cs,
+        &s0,
+        &velp,
+        &depthp,
+        &qdc,
+        &velc,
+        &depthc,
+        &ck,
+        &cn,
+        &X)
+  
+    rv.qdc = qdc
+    rv.depthc = depthc
+    rv.velc = velc
+
+    # to do: make these additional variable's conditional, somehow
+    rv.ck = ck
+    rv.cn = cn
+    rv.X = X
+
+cdef void cython_muskingcunge_wrapper(
+    float dt,
+    float qup,
+    float quc,
+    float qdp,
+    float ql,
+    float dx,
+    float bw,
+    float tw,
+    float twcc,
+    float n,
+    float ncc,
+    float cs,
+    float s0,
+    float velp,
+    float depthp,
+    QVD *rv
+) nogil:
+    
+    cdef:
+        float qdc = 0.0
+        float depthc = 0.0
+        float velc = 0.0
+        float ck = 0.0
+        float cn = 0.0
+        float X = 0.0
+
     cython_muskingcunge(
         dt,
         qup,
@@ -50,37 +109,51 @@ cdef void muskingcunge(
         rv
     )
 
-#     c_muskingcungenwm(
-#         &dt,
-#         &qup,
-#         &quc,
-#         &qdp,
-#         &ql,
-#         &dx,
-#         &bw,
-#         &tw,
-#         &twcc,
-#         &n,
-#         &ncc,
-#         &cs,
-#         &s0,
-#         &velp,
-#         &depthp,
-#         &qdc,
-#         &velc,
-#         &depthc,
-#         &ck,
-#         &cn,
-#         &X)
-    
-#     rv.qdc = qdc
-#     rv.depthc = depthc
-#     rv.velc = velc
-
 #     # to do: make these additional variable's conditional, somehow
 #     rv.ck = ck
 #     rv.cn = cn
 #     rv.X = X
+
+
+cpdef dict compute_reach_cython_kernel(float dt,
+        float qup,
+        float quc,
+        float qdp,
+        float ql,
+        float dx,
+        float bw,
+        float tw,
+        float twcc,
+        float n,
+        float ncc,
+        float cs,
+        float s0,
+        float velp,
+        float depthp):
+
+    cdef QVD rv
+    cdef QVD *out = &rv
+
+    cython_muskingcunge_wrapper(
+        dt,
+        qup,
+        quc,
+        qdp,
+        ql,
+        dx,
+        bw,
+        tw,
+        twcc,
+        n,
+        ncc,
+        cs,
+        s0,
+        velp,
+        depthp,
+        out)
+
+    return rv
+
 
 cpdef dict compute_reach_kernel(float dt,
         float qup,

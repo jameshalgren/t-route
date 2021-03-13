@@ -400,8 +400,11 @@ def compare_methods(
         # )
     # )
 
+    compare_func = reach.compute_reach_cython_kernel
+    # compare_func = reach.compute_reach_kernel
+
     # run M-C cython model
-    rv = reach.compute_reach_kernel(
+    rv = compare_func(
         # precision=precision,
         dt,
         qup,
