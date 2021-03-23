@@ -865,6 +865,10 @@ def main():
             data, data_snapped, network_data, threshold, pruned_segs
         )
 
+    else:
+        print("Please use prune and snap (-s -p). Other cases are currently not supported.")
+        exit()
+
     print("------------- AUGMENTATION COMPLETE -------------")
     t2 = time.time()
     print("The total augmentation processing time:", np.round(t2 - t1, 3))
