@@ -11,6 +11,7 @@ import argparse
 import json
 from tqdm import tqdm
 import time
+
 # from memory_profiler import profile
 
 root = pathlib.Path("../../../").resolve()
@@ -41,11 +42,7 @@ def _handle_args():
         "-n",
         help="Choose from among the pre-programmed supernetworks (Florence_FULL_RES, CONUS_FULL_RES_v20, CapeFear_FULL_RES)",
         dest="supernetwork",
-        choices=[
-            "CONUS_FULL_RES_v20",
-            "CapeFear_FULL_RES",
-            "Florence_FULL_RES",
-        ],
+        choices=["CONUS_FULL_RES_v20", "CapeFear_FULL_RES", "Florence_FULL_RES",],
         default="Florence_FULL_RES",
     )
     parser.add_argument(
@@ -88,7 +85,7 @@ def get_network_data(network_name):
     test_folder = pathlib.Path(root, r"test").resolve()
     geo_input_folder = pathlib.Path(test_folder, r"input", r"geo").resolve()
 
-    # Load network meta data 
+    # Load network meta data
     supernetwork = network_name
     network_data = nnu.set_supernetwork_parameters(
         supernetwork=supernetwork, geo_input_folder=geo_input_folder
@@ -96,7 +93,7 @@ def get_network_data(network_name):
 
     # if the NHDPlus RouteLink file does not exist, download it.
     # if not os.path.exists(network_data["geo_file_path"]):
-        # filename = os.path.basename(network_data["geo_file_path"])
+    # filename = os.path.basename(network_data["geo_file_path"])
     if not network_data["geo_file_path"].is_file:
         filename = network_data["geo_file_path"].name
         network_dl.download(network_data["geo_file_path"], network_data["data_link"])
@@ -109,7 +106,7 @@ def get_network_data(network_name):
     # GET THE STRAHLER ORDER DATA TOO!
     cols.append("order")
 
-    data = nhd_io.read(network_data["geo_file_path"])    
+    data = nhd_io.read(network_data["geo_file_path"])
     data = data[cols]
     data = data.set_index(network_data["columns"]["key"])
 
@@ -128,6 +125,7 @@ def get_network_data(network_name):
     data = nhd_io.replace_downstreams(data, network_data["columns"]["downstream"], 0)
 
     return data, RouteLink, network_data
+
 
 def network_connections(data, network_data):
 
@@ -151,7 +149,7 @@ def network_connections(data, network_data):
 
 
 def build_reaches(rconn):
-    
+
     """
     Construct reaches from network connections
     Args:
@@ -172,11 +170,12 @@ def build_reaches(rconn):
     for tw, net in subnets.items():
         path_func = partial(nhd_network.split_at_junction, net)
         subreaches[tw] = nhd_network.dfs_decomposition(net, path_func)
-    
+
     return subreachable, subreaches
 
+
 def find_headwater_reaches(subreaches, hws):
-    
+
     """
     Construct a list of headwater reaches
     Args:
@@ -185,7 +184,7 @@ def find_headwater_reaches(subreaches, hws):
     Returns:
         hw_reaches (list): lists of headwater reaches 
     """
-    
+
     hw_reaches = []
     for sublists in list(subreaches.values()):
         for rch in sublists:
@@ -193,8 +192,9 @@ def find_headwater_reaches(subreaches, hws):
                 if val in hws:
                     hw_reaches.append(rch)
                     pass
-    
+
     return hw_reaches
+
 
 def find_short_headwater_reaches(hw_reaches, idx_array, length_array, threshold):
 
@@ -208,7 +208,7 @@ def find_short_headwater_reaches(hw_reaches, idx_array, length_array, threshold)
     Returns:
         short_hw_reaches (list): lists of SHORT headwater reaches 
     """
-    
+
     short_hw_reaches = []
     for rch in hw_reaches:
 
@@ -220,11 +220,12 @@ def find_short_headwater_reaches(hw_reaches, idx_array, length_array, threshold)
 
             # note reach as being a short headwater
             short_hw_reaches.append(rch)
-            
+
     return short_hw_reaches
 
+
 def headwater_junctions(short_hw_reaches, conn):
-    
+
     """
     Build a dictionary of headwater junctions (keys) and contributing reaches (values)
     Args:
@@ -233,7 +234,7 @@ def headwater_junctions(short_hw_reaches, conn):
     Returns:
         hw_junctions (dict): headwater reaches (values) and the junction nodes they drain to (keys)
     """
-        
+
     hw_junctions = {}
     for rch in short_hw_reaches:
         jun = conn[rch[-1]]
@@ -249,11 +250,12 @@ def headwater_junctions(short_hw_reaches, conn):
         else:
             # new junction
             hw_junctions[jun[0]] = [hw]
-            
+
     return hw_junctions
 
+
 def prune_headwaters(data, threshold, network_data):
-    
+
     """
     Remove short headwater reaches from the network. Short is defined as having a length less that the threshold
     Args:
@@ -266,27 +268,29 @@ def prune_headwaters(data, threshold, network_data):
 
     # initialize list to store pruned reaches
     hw_prune_list = []
-    
+
     # numpy arrays for quick indexing
     idx_array = data.index.to_numpy()
     length_array = data.Length.to_numpy()
-    
+
     iter_count = 1
     # continue so long as short headwaters reaches exist in the network
     while 1 == 1:
-        
+
         t1 = time.time()
         # STEP 1: Find headwater reaches:
         # --------------------------------------#
-        
+
         # flatten headwater prune list
         flat_list = [item for sublist in hw_prune_list for item in sublist]
         flatter_list = [item for sublist in flat_list for item in sublist]
-        
+
         # build connections and reverse connections
         connections, rconn = network_connections(
-            data.drop(flatter_list), # network data, with pruned headwater reaches removed
-            network_data
+            data.drop(
+                flatter_list
+            ),  # network data, with pruned headwater reaches removed
+            network_data,
         )
 
         # identify headwater segments
@@ -300,10 +304,12 @@ def prune_headwaters(data, threshold, network_data):
 
         # STEP 2: identify short headwater reaches
         # --------------------------------------#
-    
+
         # find headwater reaches shorter than threshold
-        short_hw_reaches = find_short_headwater_reaches(hw_reaches, idx_array, length_array, threshold)
-        
+        short_hw_reaches = find_short_headwater_reaches(
+            hw_reaches, idx_array, length_array, threshold
+        )
+
         # CHECK: Are there any short headwter reaches?
         # --------------------------------------#
         if len(short_hw_reaches) == 0:
@@ -314,48 +320,56 @@ def prune_headwaters(data, threshold, network_data):
 
         # STEP 3: trim short headwater reaches
         # --------------------------------------
-        
-        # build a dictionary of headwater junction segments (keys) and contributing reaches (values) 
+
+        # build a dictionary of headwater junction segments (keys) and contributing reaches (values)
         hw_junctions = headwater_junctions(short_hw_reaches, connections)
-            
+
         for jun, hw in hw_junctions.items():
-            
+
             # do two short headwaters converge at this junction?
             if len(hw) > 1:
                 # if so, prune the shorter of the two
-            
+
                 # length of reach 1
                 a = np.searchsorted(idx_array, hw[0])
                 r1_len = np.sum(length_array[a])
-                
+
                 # length of reach 2
                 a = np.searchsorted(idx_array, hw[1])
                 r2_len = np.sum(length_array[a])
-                
+
                 if r1_len < r2_len:
                     # prune reach 1
                     hw_prune_list.append([hw[0]])
                 else:
                     # prune reach 2
                     hw_prune_list.append([hw[1]])
-                    
+
             else:
                 # if not, just prune the headwater reach
                 hw_prune_list.append(hw)
-        
+
         t2 = time.time()
-        print("completed", iter_count, "iterations of headwater pruning in", np.round(t2 - t1, 3),)
+        print(
+            "completed",
+            iter_count,
+            "iterations of headwater pruning in",
+            np.round(t2 - t1, 3),
+        )
         iter_count += 1
 
     # remove pruned headwater segments from the network
     flat_list = [item for sublist in hw_prune_list for item in sublist]
     flatter_list = [item for sublist in flat_list for item in sublist]
     data_pruned = data.drop(flatter_list).copy()
-    
+
     return data_pruned
 
-def find_short_nonheadwater_reaches(subreaches,rconn,idx_array,length_array,threshold):
-    
+
+def find_short_nonheadwater_reaches(
+    subreaches, rconn, idx_array, length_array, threshold
+):
+
     """
     Construct a list of short non-headwater reaches
     Args:
@@ -367,7 +381,7 @@ def find_short_nonheadwater_reaches(subreaches,rconn,idx_array,length_array,thre
     Returns:
         short_reaches (tuple): short non-headwater reaches
     """
-    
+
     short_reaches = ()
     for e, sublists in enumerate(list(subreaches.values())):
         for rch in sublists:
@@ -377,8 +391,9 @@ def find_short_nonheadwater_reaches(subreaches,rconn,idx_array,length_array,thre
                 a = np.searchsorted(idx_array, rch)
                 if np.sum(length_array[a]) < threshold:
                     short_reaches += tuple(rch)
-                
-    return(short_reaches)
+
+    return short_reaches
+
 
 def snap_junctions(data, threshold, network_data):
 
@@ -426,7 +441,7 @@ def snap_junctions(data, threshold, network_data):
     while 1 == 1:
 
         t1 = time.time()
-        
+
         # evaluate connections
         connections, rconn = network_connections(data_snapped, network_data)
 
@@ -435,11 +450,13 @@ def snap_junctions(data, threshold, network_data):
 
         # build list of headwater segments
         hws = nhd_network.headwaters(connections)
-        
+
         # find short reaches stranded between junctions
         idx_array = data_snapped.index.to_numpy()
         length_array = data_snapped.Length.to_numpy()
-        short_reaches = find_short_nonheadwater_reaches(subreaches,rconn,idx_array,length_array,threshold)
+        short_reaches = find_short_nonheadwater_reaches(
+            subreaches, rconn, idx_array, length_array, threshold
+        )
 
         print(
             "Prior to itteration",
@@ -448,7 +465,7 @@ def snap_junctions(data, threshold, network_data):
             len(short_reaches),
             "short, non-headwater, reaches exist in the network",
         )
-        
+
         # check that short reaches exist, if none - terminate process
         if len(short_reaches) == 0:
             break
@@ -474,7 +491,7 @@ def snap_junctions(data, threshold, network_data):
             # select the upstream segment to snap
             a = np.searchsorted(idx_array, us_conn)
             o = order_array[a]
-            l = length_array[a]            
+            l = length_array[a]
             if min(o) != max(o):
                 rch_to_move.extend([idx_array[a[np.argmin(o)]]])
             else:
@@ -487,20 +504,26 @@ def snap_junctions(data, threshold, network_data):
                 snap_destination.extend([to_array[a]])
             else:
                 snap_destination.extend(connections[tail])
-        
+
         data_snapped.loc[rch_to_move, "to"] = snap_destination
         t2 = time.time()
-        print("completed", iter_num, "iterations of junction snapping in", np.round(t2 - t1, 3),)
+        print(
+            "completed",
+            iter_num,
+            "iterations of junction snapping in",
+            np.round(t2 - t1, 3),
+        )
         iter_num += 1
 
     return data_snapped
 
+
 def qlat_destination_compute(
     data_native, data_merged, merged_segments, pruned_segments, network_data
 ):
-    
+
     idx_array = data_merged.index.to_numpy()
-    
+
     # build a list of all segments that need crosswalking
     if bool(list(pruned_segments)):
         segments = list(merged_segments) + list(pruned_segments)
@@ -538,6 +561,7 @@ def qlat_destination_compute(
 
     return qlat_destinations
 
+
 def segment_merge(data_native, data, network_data, thresh, pruned_segments):
 
     # create a copy of the pruned network dataset, which will be updated with merged data
@@ -548,7 +572,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
 
     # organize network into reaches
     subreachable, subreaches = build_reaches(rconn)
-    
+
     # numpy arrays of indices and segment lengths
     idx_array = data.index.to_numpy()
     len_array = data.Length.to_numpy()
@@ -560,15 +584,15 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
     for twi, (tw, rchs) in enumerate(subreaches.items(), 1):
 
         for rch in rchs:
-            
+
             # numpy arrays of index and length for this reach
             a = np.searchsorted(idx_array, rch)
             idx_rch = idx_array[a]
             len_rch = len_array[a]
-            
+
             rch_len = sum(len_rch)
             L = data.loc[rch]
-            
+
             if min(len_rch) < thresh:
 
                 ##################################################
@@ -593,16 +617,16 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
                 ##################################################
                 # if reach length is longer than threshold and smallest segment length is less than threshold
                 else:
-                    
+
                     idx_merge = idx_rch
                     len_merge = len_rch
-                    
+
                     while min(len_merge) < thresh:
 
                         # find the shortest segment in the reach
-                        idx_short = idx_merge[np.argmin(len_merge)]    
+                        idx_short = idx_merge[np.argmin(len_merge)]
                         iloc_short = np.argmin(len_merge)
-                            
+
                         # ----- Determine segment merge order ------
                         # if shortest segment is reach tail, short segment eats upstream segment
                         if idx_short == idx_merge[-1]:
@@ -613,11 +637,11 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
                         else:
                             eater = idx_merge[iloc_short + 1]
                             eaten = idx_short
-                            
+
                         # adjust length of eater segment
                         ieater = np.where(idx_merge == eater)
                         ieaten = np.where(idx_merge == eaten)
-                        
+
                         len_merge[ieater] = len_merge[ieater] + len_merge[ieaten]
                         len_merge = np.delete(len_merge, ieaten)
                         idx_merge = np.delete(idx_merge, ieaten)
@@ -626,8 +650,8 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
                         # if eater and eaten are already listed as eaters
                         if eater in merges.keys() and eaten in merges.keys():
                             merges[eater] = merges[eater] + merges[eaten] + [eaten]
-                            del merges[eaten] 
-                        
+                            del merges[eaten]
+
                         # if eater is already listed as an eater
                         elif eater in merges.keys():
                             merges[eater] = merges[eater] + [eaten]
@@ -636,14 +660,16 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
                         elif eaten in merges.keys():
                             merges[eater] = merges[eaten] + [eaten]
                             del merges[eaten]
-                            
+
                         else:
                             # update merge dictionary
                             merges[eater] = [eaten]
 
     t2 = time.time()
-    print("Done evaluating merge orientation in", np.round(t2 - t1, 3),)
-    
+    print(
+        "Done evaluating merge orientation in", np.round(t2 - t1, 3),
+    )
+
     # build lists of all eaten segments and their corresponding eaters
     # build a cross walk dictionary to help re parameterize downstream connections ('to')
     print("Creating 'to' cross walk dict and all_eaters/eaten lists")
@@ -657,7 +683,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
             all_eaten.append(e)
             all_eaters.append(eater)
     t2 = time.time()
-    print("Done. That took:",np.round(t2-t1,3))
+    print("Done. That took:", np.round(t2 - t1, 3))
 
     # build a dataframe of eaten segments, with a new column for their eaters
     print("Building data_eaten dataframe")
@@ -665,61 +691,102 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
     data_eaten = data.loc[all_eaten]
     data_eaten["eater"] = all_eaters
     t2 = time.time()
-    print("Done. That took:",np.round(t2-t1,3))
-    
+    print("Done. That took:", np.round(t2 - t1, 3))
+
     # build a dataframe of eater segments, with a new eater column for the sake of grouping
     print("Building data_eaters dataframe")
     t1 = time.time()
     data_eaters = data.loc[np.unique(all_eaters)]
     data_eaters["eater"] = data_eaters.index
     t2 = time.time()
-    print("Done. That took:",np.round(t2-t1,3))
-    
+    print("Done. That took:", np.round(t2 - t1, 3))
+
     # append eater and eaten dataframes together
     print("merging eater and eaten dataframes")
     t1 = time.time()
     data_to_merge = data_eaten.append(data_eaters)
     t2 = time.time()
-    print("Done. That took:",np.round(t2-t1,3))
-    
+    print("Done. That took:", np.round(t2 - t1, 3))
+
     # group by eater segmment IDs and modify routing parameters
     print("Grouping by eater and changing parameter values")
     t1 = time.time()
     idx_array = data_to_merge.index.to_numpy()
     length_array = data_to_merge.Length.to_numpy()
     sort = np.argsort(idx_array)
-    data_parameter_merge = data_to_merge.groupby("eater").agg({'to': 'min',
-                                               'Length':'sum', 
-                                               'n': lambda x: np.average(x, weights = length_array[sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter = sort)]]),
-                                               'nCC': lambda x: np.average(x, weights = length_array[sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter = sort)]]),
-                                               'So': lambda x: np.average(x, weights = length_array[sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter = sort)]]),
-                                               'BtmWdth': lambda x: np.average(x, weights = length_array[sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter = sort)]]),
-                                               'TopWdth': lambda x: np.average(x, weights = length_array[sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter = sort)]]),
-                                               'TopWdthCC': lambda x: np.average(x, weights = length_array[sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter = sort)]]),
-                                               'NHDWaterbodyComID': 'min',
-                                               'MusK': 'min',
-                                               'MusX': 'min',
-                                               'ChSlp': lambda x: np.average(x, weights = length_array[sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter = sort)]]),
-                                               'order': 'min'})
-    
+    data_parameter_merge = data_to_merge.groupby("eater").agg(
+        {
+            "to": "min",
+            "Length": "sum",
+            "n": lambda x: np.average(
+                x,
+                weights=length_array[
+                    sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter=sort)]
+                ],
+            ),
+            "nCC": lambda x: np.average(
+                x,
+                weights=length_array[
+                    sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter=sort)]
+                ],
+            ),
+            "So": lambda x: np.average(
+                x,
+                weights=length_array[
+                    sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter=sort)]
+                ],
+            ),
+            "BtmWdth": lambda x: np.average(
+                x,
+                weights=length_array[
+                    sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter=sort)]
+                ],
+            ),
+            "TopWdth": lambda x: np.average(
+                x,
+                weights=length_array[
+                    sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter=sort)]
+                ],
+            ),
+            "TopWdthCC": lambda x: np.average(
+                x,
+                weights=length_array[
+                    sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter=sort)]
+                ],
+            ),
+            "NHDWaterbodyComID": "min",
+            "MusK": "min",
+            "MusX": "min",
+            "ChSlp": lambda x: np.average(
+                x,
+                weights=length_array[
+                    sort[np.searchsorted(idx_array, x.index.to_numpy(), sorter=sort)]
+                ],
+            ),
+            "order": "min",
+        }
+    )
+
     t2 = time.time()
-    print("Done. That took:",np.round(t2-t1,3))
-    
+    print("Done. That took:", np.round(t2 - t1, 3))
+
     # update 'to' variable in data_merged
     print("updating 'to' variable")
     t1 = time.time()
-    data_parameter_merge['to'] = data_to_merge.loc[data_parameter_merge.index]['to']
+    data_parameter_merge["to"] = data_to_merge.loc[data_parameter_merge.index]["to"]
     t2 = time.time()
-    print("Done. That took:",np.round(t2-t1,3))
-    
+    print("Done. That took:", np.round(t2 - t1, 3))
+
     # replace
     print("dropping and replacing merged segments")
     t1 = time.time()
-    data_merged = data_merged.drop(all_eaten)  
-    data_merged.loc[data_parameter_merge.index] = data_parameter_merge.loc[data_parameter_merge.index]
+    data_merged = data_merged.drop(all_eaten)
+    data_merged.loc[data_parameter_merge.index] = data_parameter_merge.loc[
+        data_parameter_merge.index
+    ]
     t2 = time.time()
-    print("Done. That took:",np.round(t2-t1,3))
-    
+    print("Done. That took:", np.round(t2 - t1, 3))
+
     # adjust 'to' variable
     print("re-wiring connections")
     t1 = time.time()
@@ -732,22 +799,23 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
 
             a = np.where(to_array == eaten)
             idx.extend(list(idx_array[a]))
-            to_replace.extend([eater]*len(list(idx_array[a])))
+            to_replace.extend([eater] * len(list(idx_array[a])))
 
-    data_merged.loc[idx,'to'] = to_replace
+    data_merged.loc[idx, "to"] = to_replace
     t2 = time.time()
-    print("Done. That took:",np.round(t2-t1,3))
-    
+    print("Done. That took:", np.round(t2 - t1, 3))
+
     # create a qlateral destinations dictionary
     print("building qlateral crosswalk")
     t1 = time.time()
     qlat_destinations = qlat_destination_compute(
         data_native, data_merged, all_eaten, pruned_segments, network_data
-    ) 
+    )
     t2 = time.time()
-    print("Done. That took:",np.round(t2-t1,3))
-    
+    print("Done. That took:", np.round(t2 - t1, 3))
+
     return data_merged, qlat_destinations
+
 
 def main():
 
@@ -766,17 +834,14 @@ def main():
     RouteLink = RouteLink.set_index(network_data["columns"]["key"])
 
     pruned_segs = set()
-    
-    #-------------------------------
+
+    # -------------------------------
     # PRUNE - SNAP - MERGE
-    #-------------------------------
+    # -------------------------------
     t1 = time.time()
     if prune and snap:
         dirname = (
-            "RouteLink_"
-            + supernetwork
-            + "_" + str(threshold)
-            + "m_prune_snap_merge"
+            "RouteLink_" + supernetwork + "_" + str(threshold) + "m_prune_snap_merge"
         )
         filename_cw = (
             "CrossWalk_"
@@ -791,7 +856,7 @@ def main():
 
         # identify pruned segments
         pruned_segs.update(set(np.setdiff1d(data.index, data_pruned.index)))
-        
+
         print("------------- SNAPPING JUNCTIONS -------------")
         data_snapped = snap_junctions(data_pruned, threshold, network_data)
 
@@ -799,75 +864,74 @@ def main():
         data_merged, qlat_destinations = segment_merge(
             data, data_snapped, network_data, threshold, pruned_segs
         )
-        
+
     print("------------- AUGMENTATION COMPLETE -------------")
     t2 = time.time()
-    print("The total augmentation processing time:", np.round(t2-t1,3))
-    
+    print("The total augmentation processing time:", np.round(t2 - t1, 3))
+
     print("------------- QA/QC TESTING -------------")
     # Check augmented network connections
     def connection_check(N1, N2, network_data):
-        
         def count_tailwaters(N, network_data):
             connections, rconn = network_connections(N, network_data)
             subreachable, subreaches = build_reaches(rconn)
-            return(len(subreachable.keys()))
-        
+            return len(subreachable.keys())
+
         tws_N1 = count_tailwaters(N1, network_data)
         tws_N2 = count_tailwaters(N2, network_data)
-        return(tws_N1 == tws_N2)
-    
+        return tws_N1 == tws_N2
+
     check = connection_check(data_snapped, data_merged, network_data)
     if check:
         print("Passed connection test")
     else:
-        print("Error! - The merging process has created additional tailwaters (i.e. it broke the network)")
+        print(
+            "Error! - The merging process has created additional tailwaters (i.e. it broke the network)"
+        )
         raise ValueError
-        
+
     def crosswalk_check(data, data_merged, qlat_destinations):
-        
+
         # make sure all segments removed from the original network have a qlateral destination in the augmented network
-        
+
         # which segments no longer exist in the augmented network?
         idx_original = data.index.to_numpy()
         idx_augmented = data_merged.index.to_numpy()
-        
-        mask = np.in1d(idx_original, idx_augmented, invert = True)
+
+        mask = np.in1d(idx_original, idx_augmented, invert=True)
         idx_dropped = idx_original[mask]
-        
+
         # check that all dropped indices have a destination
         for i in idx_dropped:
             if i not in qlat_destinations.keys():
-                print("Error! - Segment",i,"has been dropped from the network and has no qlateral crosswalk destination") 
+                print(
+                    "Error! - Segment",
+                    i,
+                    "has been dropped from the network and has no qlateral crosswalk destination",
+                )
                 raise ValueError
-                
+
         # check that all destinations exist in augmented network
         for i in qlat_destinations.values():
             if i not in idx_augmented:
-                print("Error! - Crosswalk destination segment",i,"does not exist in the augmented network")
+                print(
+                    "Error! - Crosswalk destination segment",
+                    i,
+                    "does not exist in the augmented network",
+                )
                 raise ValueError
-            
-        print("Passed crosswalk test")
-        
-    crosswalk_check(data,data_merged, qlat_destinations)
 
-    #-------------------------------
+        print("Passed crosswalk test")
+
+    crosswalk_check(data, data_merged, qlat_destinations)
+
+    # -------------------------------
     #      SNAP - MERGE
-    #-------------------------------
+    # -------------------------------
     if snap and not prune:
-        dirname = (
-            "RouteLink_"
-            + supernetwork
-            + "_"
-            + str(threshold)
-            + "m_snap_merge"
-        )
+        dirname = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_snap_merge"
         filename_cw = (
-            "CrossWalk_" + 
-            supernetwork + 
-            "_" + 
-            str(threshold) + 
-            "m_snap_merge.json"
+            "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_snap_merge.json"
         )
 
         print("Snap and merge:")
@@ -879,23 +943,13 @@ def main():
             data, data_snapped, network_data, threshold, pruned_segs
         )
 
-    #-------------------------------
+    # -------------------------------
     #      PRUNE - MERGE
-    #-------------------------------
+    # -------------------------------
     if not snap and prune:
-        dirname = (
-            "RouteLink_"
-            + supernetwork
-            + "_"
-            + str(threshold)
-            + "m_prune_merge"
-        )
+        dirname = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_prune_merge"
         filename_cw = (
-            "CrossWalk_"
-            + supernetwork
-            + "_"
-            + str(threshold)
-            + "m_prune_merge.json"
+            "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_prune_merge.json"
         )
 
         print("Prune and merge:")
@@ -910,34 +964,23 @@ def main():
             data, data_snapped, network_data, threshold, pruned_segs
         )
 
-    #-------------------------------
+    # -------------------------------
     #         MERGE
-    #-------------------------------
+    # -------------------------------
     if not snap and not prune:
-        dirname = (
-            "RouteLink_"
-            + supernetwork
-            + "_"
-            + str(threshold)
-            + "m_merge"
-                  )
+        dirname = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_merge"
         filename_cw = (
-            "CrossWalk_"
-            + supernetwork
-            + "_"
-            + str(threshold)
-            + "m_merge.json"
+            "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_merge.json"
         )
-        
+
         print("Just merge:")
         print("merging segments...")
         data_merged, qlat_destinations = segment_merge(
             data, data, network_data, threshold, pruned_segs
         )
 
-    
     if write_output:
-        
+
         # write a new *edited* RouteLink DataFrame
         RouteLink_edit = RouteLink.loc[data_merged.index.values]
         # replace parameters
@@ -965,11 +1008,15 @@ def main():
 
         # dir_path = os.path.join(root, "test", "input", "geo", "Channels", dirname)
         # if not os.path.isdir(dir_path):
-            # os.mkdir(dir_path)
+        # os.mkdir(dir_path)
 
         # save RouteLink data as pickle
         # pd.DataFrame(RouteLink_edit).to_pickle(os.path.join(root, "test", "input", "geo", "Channels", dirname, dirname + ".pkl"))
-        pd.DataFrame(RouteLink_edit).to_pickle(pathlib.Path(root, "test", "input", "geo", "Channels", dirname, dirname + ".pkl").resolve())
+        pd.DataFrame(RouteLink_edit).to_pickle(
+            pathlib.Path(
+                root, "test", "input", "geo", "Channels", dirname, dirname + ".pkl"
+            ).resolve()
+        )
 
         # save cross walk as json
         print(
@@ -981,14 +1028,23 @@ def main():
         )
         # with open(os.path.join(dir_path, filename_cw), "w") as outfile:
         with dir_path.joinpath(filename_cw).open("w") as outfile:
-            json.dump({repr(i):v for i, v in qlat_destinations.items()}, outfile)
+            json.dump({repr(i): v for i, v in qlat_destinations.items()}, outfile)
 
         # export original data
         if return_original:
             # RouteLink.loc[data.index.values].to_pickle(os.path.join(root, "test", "input", "geo", "Channels", dirname, supernetwork + ".pkl"))
-            RouteLink.loc[data.index.values].to_pickle(pathlib.Path(root, "test", "input", "geo", "Channels", dirname, supernetwork + ".pkl").resolve())
+            RouteLink.loc[data.index.values].to_pickle(
+                pathlib.Path(
+                    root,
+                    "test",
+                    "input",
+                    "geo",
+                    "Channels",
+                    dirname,
+                    supernetwork + ".pkl",
+                ).resolve()
+            )
 
 
 if __name__ == "__main__":
     main()
-
