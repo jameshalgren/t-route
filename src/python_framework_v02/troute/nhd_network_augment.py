@@ -1,21 +1,21 @@
-## testing: python nhd_network_augment.py CapeFear_FULL_RES -p -s
+## testing: python nhd_network_augment.py --network CapeFear_FULL_RES -p -s
 import numpy as np
 import pandas as pd
 import geopandas as gpd
 import xarray as xr
 from functools import partial
 from itertools import chain
-import os
 import sys
 import pathlib
 import argparse
 import json
 from tqdm import tqdm
 import time
-from memory_profiler import profile
+# from memory_profiler import profile
 
 root = pathlib.Path("../../../").resolve()
-sys.path.append(os.path.join(root, "src", "python_framework_v01"))
+# sys.path.append(os.path.join(root, "src", "python_framework_v01"))
+sys.path.append(str(pathlib.Path(root, "src", "python_framework_v01").resolve()))
 
 import nhd_network_utilities_v02 as nnu
 import nhd_network
@@ -38,6 +38,7 @@ def _handle_args():
     )
     parser.add_argument(
         "--network",
+        "-n",
         help="Choose from among the pre-programmed supernetworks (Florence_FULL_RES, CONUS_FULL_RES_v20, CapeFear_FULL_RES)",
         dest="supernetwork",
         choices=[
@@ -82,8 +83,10 @@ def _handle_args():
 def get_network_data(network_name):
 
     # Create directory path variable for test/input/geo, where NHD data and masks are stored
-    test_folder = os.path.join(root, r"test")
-    geo_input_folder = os.path.join(test_folder, r"input", r"geo")
+    # test_folder = os.path.join(root, r"test")
+    # geo_input_folder = os.path.join(test_folder, r"input", r"geo")
+    test_folder = pathlib.Path(root, r"test").resolve()
+    geo_input_folder = pathlib.Path(test_folder, r"input", r"geo").resolve()
 
     # Load network meta data 
     supernetwork = network_name
@@ -92,8 +95,10 @@ def get_network_data(network_name):
     )
 
     # if the NHDPlus RouteLink file does not exist, download it.
-    if not os.path.exists(network_data["geo_file_path"]):
-        filename = os.path.basename(network_data["geo_file_path"])
+    # if not os.path.exists(network_data["geo_file_path"]):
+        # filename = os.path.basename(network_data["geo_file_path"])
+    if not network_data["geo_file_path"].is_file:
+        filename = network_data["geo_file_path"].name
         network_dl.download(network_data["geo_file_path"], network_data["data_link"])
 
     # read-in NHD network data, as-is, unmodified
@@ -948,30 +953,42 @@ def main():
             "exporting RouteLink DataFrame:",
             dirname + ".pkl",
             "to",
-            os.path.join(root, "test", "input", "geo", "Channels", dirname),
+            pathlib.Path(root, "test", "input", "geo", "Channels").resolve(),
+            # os.path.join(root, "test", "input", "geo", "Channels", dirname),
         )
 
-        dir_path = os.path.join(root, "test", "input", "geo", "Channels", dirname)
-        if not os.path.isdir(dir_path):
-            os.mkdir(dir_path)
+        dir_path = pathlib.Path(
+            root, "test", "input", "geo", "Channels", dirname
+        ).resolve()
+        if not pathlib.Path.is_dir(dir_path):
+            pathlib.Path.mkdir(dir_path)
+
+        # dir_path = os.path.join(root, "test", "input", "geo", "Channels", dirname)
+        # if not os.path.isdir(dir_path):
+            # os.mkdir(dir_path)
 
         # save RouteLink data as pickle
-        pd.DataFrame(RouteLink_edit).to_pickle(os.path.join(root, "test", "input", "geo", "Channels", dirname, dirname + ".pkl"))
+        # pd.DataFrame(RouteLink_edit).to_pickle(os.path.join(root, "test", "input", "geo", "Channels", dirname, dirname + ".pkl"))
+        pd.DataFrame(RouteLink_edit).to_pickle(pathlib.Path(root, "test", "input", "geo", "Channels", dirname, dirname + ".pkl").resolve())
 
         # save cross walk as json
         print(
             "exporting CrossWalk file:",
             filename_cw,
             "to",
-            os.path.join(root, "test", "input", "geo", "Channels", dirname),
+            # os.path.join(root, "test", "input", "geo", "Channels", dirname),
+            pathlib.Path(root, "test", "input", "geo", "Channels", dirname).resolve(),
         )
-        with open(os.path.join(dir_path, filename_cw), "w") as outfile:
-            json.dump(qlat_destinations, outfile)
+        # with open(os.path.join(dir_path, filename_cw), "w") as outfile:
+        with dir_path.joinpath(filename_cw).open("w") as outfile:
+            json.dump({repr(i):v for i, v in qlat_destinations.items()}, outfile)
 
         # export original data
         if return_original:
-            RouteLink.loc[data.index.values].to_pickle(os.path.join(root, "test", "input", "geo", "Channels", dirname, supernetwork + ".pkl"))
+            # RouteLink.loc[data.index.values].to_pickle(os.path.join(root, "test", "input", "geo", "Channels", dirname, supernetwork + ".pkl"))
+            RouteLink.loc[data.index.values].to_pickle(pathlib.Path(root, "test", "input", "geo", "Channels", dirname, supernetwork + ".pkl").resolve())
 
 
 if __name__ == "__main__":
     main()
+
