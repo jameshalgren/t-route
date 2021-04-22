@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 from distutils.extension import Extension
 import sys
 import numpy as np
@@ -51,5 +51,5 @@ if USE_CYTHON:
     ext_modules = cythonize(ext_modules, compiler_directives={"language_level": 3})
 
 setup(
-    name="compute_network_mc", ext_modules=ext_modules,
+    name="nwm_route", ext_modules=ext_modules, packages=find_packages()
 )
