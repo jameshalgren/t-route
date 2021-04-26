@@ -144,7 +144,13 @@ def read_qlat(path):
     return get_ql_from_csv(path)
 
 
-def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_lateral"):
+def get_ql_from_wrf_hydro_mf(
+    qlat_files,
+    index_col="feature_id",
+    value_col="q_lateral",
+    file_run_size=None,
+    ts_iterator=None,
+):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id
@@ -196,18 +202,25 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
         preprocess=drop_all_coords,
         # parallel=True,
     ) as ds:
+        glob_step = 1
+        if not file_run_size:
+            glob_slice = slice(None, None, glob_step)
+        else:
+            glob_slice_idx_0 = int(ts_iterator * file_run_size)
+            glob_slice_idx_1 = int(ts_iterator + 1) * file_run_size
+            glob_slice = slice(glob_slice_idx_0, glob_slice_idx_1, glob_step)
         try:
             ql = pd.DataFrame(
-                ds[value_col].values.T,
+                ds[value_col].values.T[:][:, glob_slice],
                 index=ds[index_col].values[0],
-                columns=ds.time.values,
+                columns=ds.time.values[glob_slice],
                 # dtype=float,
             )
         except:
             ql = pd.DataFrame(
-                ds[value_col].values.T,
+                ds[value_col].values.T[:][:, glob_slice],
                 index=ds[index_col].values,
-                columns=ds.time.values,
+                columns=ds.time.values[glob_slice],
                 # dtype=float,
             )
 
