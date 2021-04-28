@@ -510,6 +510,8 @@ def build_qlateral_array(
     supernetwork_parameters,
     nts,
     qts_subdivisions=1,
+    ts_iterator=None,
+    file_run_size=None,
 ):
     # TODO: set default/optional arguments
 
@@ -528,6 +530,8 @@ def build_qlateral_array(
         qlat_files = qlat_input_folder.glob(qlat_file_pattern_filter)
         qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
             qlat_files=qlat_files,
+            ts_iterator=ts_iterator,
+            file_run_size=file_run_size,
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
         )

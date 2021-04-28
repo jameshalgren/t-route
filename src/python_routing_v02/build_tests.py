@@ -158,8 +158,14 @@ def build_test_parameters(
     )
 
 
-def parity_check(parity_parameters, run_parameters, results):
-
+def parity_check(
+    parity_parameters,
+    run_parameters,
+    ts_iterator,
+    file_run_size,
+    supernetwork_parameters,
+    results,
+):
     nts = run_parameters["nts"]
     dt = run_parameters["dt"]
 
@@ -173,9 +179,11 @@ def parity_check(parity_parameters, run_parameters, results):
 
         # read validation data from CHRTOUT files
         validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
-            validation_files,
-            parity_parameters["parity_check_file_index_col"],
-            parity_parameters["parity_check_file_value_col"],
+            qlat_files = validation_files,
+            index_col = parity_parameters["parity_check_file_index_col"],
+            value_col = parity_parameters["parity_check_file_value_col"],
+            file_run_size = file_run_size,
+            ts_iterator = ts_iterator,
             # [compare_node],
         )
 
