@@ -146,10 +146,10 @@ def _handle_args():
         default=-1,
     )
     parser.add_argument(
-        "--compute-method",
+        "--compute-kernel",
         nargs="?",
         help="Use the cython version of the compute_network code [options: 'V02-caching'; 'V02-structured'; 'V02-structured-obj' ... ).",
-        dest="compute_method",
+        dest="compute_kernel",
         default="VO2-caching",
     )
     supernetwork_arg_group = parser.add_mutually_exclusive_group()
@@ -904,7 +904,7 @@ def _input_handler():
         run_parameters["subnetwork_target_size"] = args.subnetwork_target_size
         run_parameters["cpu_pool"] = args.cpu_pool
         run_parameters["showtiming"] = args.showtiming
-        run_parameters["compute_method"] = args.compute_method
+        run_parameters["compute_kernel"] = args.compute_kernel
 
         run_parameters["debuglevel"] = debuglevel = -1 * args.debuglevel
         run_parameters["verbose"] = verbose = args.verbose
@@ -941,7 +941,7 @@ def _input_handler():
             run_parameters["dt"] = args.dt
             run_parameters["nts"] = args.nts
             run_parameters["qts_subdivisions"] = args.qts_subdivisions
-            run_parameters["compute_method"] = args.compute_method
+            run_parameters["compute_kernel"] = args.compute_kernel
 
             waterbody_parameters[
                 "break_network_at_waterbodies"
@@ -1203,16 +1203,16 @@ def main():
 
     if run_parameters.get("compute_kernel", None) == "diffusive":
         compute_func = diffusive.compute_diffusive_tst
-    elif run_parameters.get("compute_method", None) == "V02-caching":
+    elif run_parameters.get("compute_kernel", None) == "V02-caching":
         compute_func = fast_reach.compute_network
-    elif run_parameters.get("compute_method", None) == "V02-structured":
+    elif run_parameters.get("compute_kernel", None) == "V02-structured":
         compute_func = fast_reach.compute_network_structured
-    elif run_parameters.get("compute_method", None) == "V02-structured-obj":
+    elif run_parameters.get("compute_kernel", None) == "V02-structured-obj":
         compute_func = fast_reach.compute_network_structured_obj
     else:
         compute_func = fast_reach.compute_network
 
-    # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
+    # TODO: Remove below. --compute-kernel=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
 
     results = compute_nhd_routing_v02(
