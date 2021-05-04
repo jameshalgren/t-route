@@ -320,6 +320,7 @@ def compute_nhd_routing_v02(
     parallel_compute_method,
     subnetwork_target_size,
     cpu_pool,
+    dt,
     nts,
     qts_subdivisions,
     independent_networks,
@@ -332,6 +333,9 @@ def compute_nhd_routing_v02(
     waterbodies_df,
     diffusive_parameters=None,
 ):
+
+    param_df["dt"] = dt
+    param_df = param_df.astype("float32")
 
     start_time = time.time()
     if parallel_compute_method == "by-subnetwork-jit-clustered":
@@ -426,7 +430,8 @@ def compute_nhd_routing_v02(
 
                     segs.extend(offnetwork_upstreams)
                     param_df_sub = param_df.loc[
-                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
+                        segs,
+                        ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
@@ -572,7 +577,8 @@ def compute_nhd_routing_v02(
 
                     segs.extend(offnetwork_upstreams)
                     param_df_sub = param_df.loc[
-                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
+                        segs,
+                        ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
@@ -874,40 +880,42 @@ def _input_handler():
     args = _handle_args()
 
     custom_input_file = args.custom_input_file
+    log_parameters = {}
     supernetwork_parameters = None
     waterbody_parameters = {}
+    compute_parameters = {}
     forcing_parameters = {}
     restart_parameters = {}
     output_parameters = {}
-    run_parameters = {}
     parity_parameters = {}
     data_assimilation_parameters = {}
     diffusive_parameters = {}
 
     if custom_input_file:
         (
+            log_parameters,
             supernetwork_parameters,
             waterbody_parameters,
+            compute_parameters,
             forcing_parameters,
             restart_parameters,
+            diffusive_parameters,
             output_parameters,
-            run_parameters,
             parity_parameters,
             data_assimilation_parameters,
-            diffusive_parameters,
-        ) = nhd_io.read_custom_input(custom_input_file)
+        ) = nhd_io.read_custom_input_new(custom_input_file)
 
     else:
-        run_parameters["assume_short_ts"] = args.assume_short_ts
-        run_parameters["return_courant"] = args.return_courant
-        run_parameters["parallel_compute_method"] = args.parallel_compute_method
-        run_parameters["subnetwork_target_size"] = args.subnetwork_target_size
-        run_parameters["cpu_pool"] = args.cpu_pool
-        run_parameters["showtiming"] = args.showtiming
-        run_parameters["compute_kernel"] = args.compute_kernel
+        compute_parameters["assume_short_ts"] = args.assume_short_ts
+        compute_parameters["return_courant"] = args.return_courant
+        compute_parameters["parallel_compute_method"] = args.parallel_compute_method
+        compute_parameters["subnetwork_target_size"] = args.subnetwork_target_size
+        compute_parameters["cpu_pool"] = args.cpu_pool
+        compute_parameters["compute_kernel"] = args.compute_kernel
 
-        run_parameters["debuglevel"] = debuglevel = -1 * args.debuglevel
-        run_parameters["verbose"] = verbose = args.verbose
+        log_parameters["showtiming"] = args.showtiming
+        log_parameters["debuglevel"] = debuglevel = -1 * args.debuglevel
+        log_parameters["verbose"] = verbose = args.verbose
 
         output_parameters["csv_output"] = {}
         output_parameters["csv_output"]["csv_output_folder"] = args.csv_output_folder
@@ -915,6 +923,7 @@ def _input_handler():
         test_folder = pathlib.Path(root, "test")
         geo_input_folder = test_folder.joinpath("input", "geo")
 
+        # TODO: Fix this test case after input restructure
         test_case = args.test_case
 
         if test_case:
@@ -938,10 +947,10 @@ def _input_handler():
             )
 
         else:
-            run_parameters["dt"] = args.dt
-            run_parameters["nts"] = args.nts
-            run_parameters["qts_subdivisions"] = args.qts_subdivisions
-            run_parameters["compute_kernel"] = args.compute_kernel
+            compute_parameters["dt"] = args.dt
+            compute_parameters["nts"] = args.nts
+            compute_parameters["qts_subdivisions"] = args.qts_subdivisions
+            compute_parameters["compute_kernel"] = args.compute_kernel
 
             waterbody_parameters[
                 "break_network_at_waterbodies"
@@ -997,40 +1006,26 @@ def _input_handler():
             )
 
     return (
+        log_parameters,
         supernetwork_parameters,
         waterbody_parameters,
+        compute_parameters,
         forcing_parameters,
         restart_parameters,
         output_parameters,
-        run_parameters,
         parity_parameters,
         data_assimilation_parameters,
         diffusive_parameters,
     )
 
 
-def main():
-
-    (
-        supernetwork_parameters,
-        waterbody_parameters,
-        forcing_parameters,
-        restart_parameters,
-        output_parameters,
-        run_parameters,
-        parity_parameters,
-        data_assimilation_parameters,
-        diffusive_parameters,
-    ) = _input_handler()
-
-    dt = run_parameters.get("dt", None)
-    nts = run_parameters.get("nts", None)
-    verbose = run_parameters.get("verbose", None)
-    showtiming = run_parameters.get("showtiming", None)
-    debuglevel = run_parameters.get("debuglevel", 0)
-    break_network_at_waterbodies = run_parameters.get(
-        "break_network_at_waterbodies", False
-    )
+def nwm_network_preprocess(
+    supernetwork_parameters,
+    waterbody_parameters,
+    showtiming=False,
+    verbose=False,
+    debuglevel=0,
+):
 
     if showtiming:
         main_start_time = time.time()
@@ -1041,8 +1036,12 @@ def main():
         start_time = time.time()
 
     # STEP 1: Build basic network connections graph
-    connections, param_df = nnu.build_connections(supernetwork_parameters, dt,)
+    connections, param_df = nnu.build_connections(supernetwork_parameters)
     wbodies = nnu.build_waterbodies(param_df, supernetwork_parameters, "waterbody")
+
+    break_network_at_waterbodies = waterbody_parameters.get(
+        "break_network_at_waterbodies", False
+    )
     if break_network_at_waterbodies:
         connections = nhd_network.replace_waterbodies_connections(connections, wbodies)
 
@@ -1064,13 +1063,13 @@ def main():
         )
 
         # Remove duplicate lake_ids and rows
-        waterbodies_df_reduced = (
+        waterbodies_df = (
             waterbodies_df.reset_index()
             .drop_duplicates(subset="lake_id")
             .set_index("lake_id")
         )
     else:
-        waterbodies_df_reduced = pd.DataFrame()
+        waterbodies_df = pd.DataFrame()
 
     # STEP 2: Identify Independent Networks and Reaches by Network
     if showtiming:
@@ -1080,14 +1079,36 @@ def main():
 
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
         connections,
-        list(waterbodies_df_reduced.index.values)
-        if break_network_at_waterbodies
-        else None,
+        list(waterbodies_df.index.values) if break_network_at_waterbodies else None,
     )
     if verbose:
         print("reach organization complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
+
+    return (
+        connections,
+        param_df,
+        wbodies,
+        waterbodies_df,
+        break_network_at_waterbodies,
+        independent_networks,
+        reaches_bytw,
+        rconn,
+    )
+
+
+def nwm_initial_warmstate_preprocess(
+    break_network_at_waterbodies,
+    restart_parameters,
+    param_df,
+    waterbodies_df,
+    segment_list=None,
+    wbodies_list=None,
+    showtiming=False,
+    verbose=False,
+    debuglevel=0,
+):
 
     if break_network_at_waterbodies:
         ## STEP 3c: Handle Waterbody Initial States
@@ -1122,10 +1143,6 @@ def main():
                 len(waterbodies_initial_states_df)
             )
 
-        waterbodies_df_reduced = pd.merge(
-            waterbodies_df_reduced, waterbodies_initial_states_df, on="lake_id"
-        )
-
         if verbose:
             print("waterbody initial states complete")
         if showtiming:
@@ -1148,18 +1165,54 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
+    waterbodies_df = pd.merge(
+        waterbodies_df, waterbodies_initial_states_df, on="lake_id"
+    )
+
+    return waterbodies_df, q0
+    # TODO: This returns a full dataframe (waterbodies_df) with the
+    # merged initial states for waterbodies, but only the
+    # initial state values (q0; not merged with the channel properties)
+    # for the channels --
+    # That is because that is how they are used downstream. Need to
+    # trace that back and decide if there is one of those two ways
+    # that is optimal and make both returns that way.
+
+
+def nwm_forcing_preprocess(
+    connections,
+    break_network_at_waterbodies,
+    run,
+    forcing_parameters,
+    data_assimilation_parameters,
+    showtiming=False,
+    verbose=False,
+    debuglevel=0,
+):
+
+    nts = forcing_parameters.get("nts", None)
+    dt = forcing_parameters.get("dt", None)
+    qts_subdivisions = forcing_parameters.get("qts_subdivisions", None)
+    qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
+    qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
+    qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
+
+    # TODO: find a better way to deal with these defaults and overrides.
+    run["nts"] = run.get("nts", nts)
+    run["dt"] = run.get("dt", dt)
+    run["qts_subdivisions"] = run.get("qts_subdivisions", qts_subdivisions)
+    run["qlat_input_folder"] = run.get("qlat_input_folder", qlat_input_folder)
+    run["qlat_file_index_col"] = run.get("qlat_file_index_col", qlat_file_index_col)
+    run["qlat_file_value_col"] = run.get("qlat_file_value_col", qlat_file_value_col)
+
     # STEP 5: Read (or set) QLateral Inputs
     if showtiming:
         start_time = time.time()
     if verbose:
         print("creating qlateral array ...")
 
-    qlats = nnu.build_qlateral_array(
-        forcing_parameters,
-        connections.keys(),
-        supernetwork_parameters,
-        nts,
-        run_parameters.get("qts_subdivisions", 1),
+    qlats_df = nnu.build_qlateral_array(
+        run, connections.keys(), supernetwork_parameters,
     )
 
     if verbose:
@@ -1190,24 +1243,53 @@ def main():
     else:
         usgs_df = pd.DataFrame()
 
+    # TODO: disentangle the implicit (run) and explicit (qlats_df, usgs_df) returns
+    return qlats_df, usgs_df
+
+
+def nwm_route(
+    downstream_connections,
+    upstream_connections,
+    waterbodies_in_connections,
+    reaches_bytw,
+    parallel_compute_method,
+    subnetwork_target_size,
+    cpu_pool,
+    dt,
+    nts,
+    qts_subdivisions,
+    independent_networks,
+    param_df,
+    q0,
+    qlats,
+    usgs_df,
+    assume_short_ts,
+    return_courant,
+    waterbodies_df,
+    diffusive_parameters,
+    showtiming=False,
+    verbose=False,
+    debuglevel=0,
+):
+
     ################### Main Execution Loop across ordered networks
     if showtiming:
         start_time = time.time()
     if verbose:
-        if run_parameters.get("return_courant", False):
+        if compute_parameters.get("return_courant", False):
             print(
                 f"executing routing computation, with Courant evaluation metrics returned"
             )
         else:
             print(f"executing routing computation ...")
 
-    if run_parameters.get("compute_kernel", None) == "diffusive":
+    if compute_parameters.get("compute_kernel", None) == "diffusive":
         compute_func = diffusive.compute_diffusive_tst
-    elif run_parameters.get("compute_kernel", None) == "V02-caching":
+    elif compute_parameters.get("compute_kernel", None) == "V02-caching":
         compute_func = fast_reach.compute_network
-    elif run_parameters.get("compute_kernel", None) == "V02-structured":
+    elif compute_parameters.get("compute_kernel", None) == "V02-structured":
         compute_func = fast_reach.compute_network_structured
-    elif run_parameters.get("compute_kernel", None) == "V02-structured-obj":
+    elif compute_parameters.get("compute_kernel", None) == "V02-structured-obj":
         compute_func = fast_reach.compute_network_structured_obj
     else:
         compute_func = fast_reach.compute_network
@@ -1221,20 +1303,20 @@ def main():
         wbodies,
         reaches_bytw,
         compute_func,
-        run_parameters.get("parallel_compute_method", None),
-        run_parameters.get("subnetwork_target_size", 1),
-        # The default here might be the whole network or some percentage...
-        run_parameters.get("cpu_pool", None),
-        run_parameters.get("nts", 1),
-        run_parameters.get("qts_subdivisions", 1),
+        parallel_compute_method,
+        subnetwork_target_size,  # The default here might be the whole network or some percentage...
+        cpu_pool,
+        dt,
+        nts,
+        qts_subdivisions,
         independent_networks,
         param_df,
         q0,
         qlats,
         usgs_df,
-        run_parameters.get("assume_short_ts", False),
-        run_parameters.get("return_courant", False),
-        waterbodies_df_reduced,
+        compute_parameters.get("assume_short_ts", False),
+        compute_parameters.get("return_courant", False),
+        waterbodies_df,
         diffusive_parameters,
     )
 
@@ -1243,8 +1325,11 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-    ################### Output Handling
+    return results
 
+
+def nwm_output_generator():
+    ################### Output Handling
     if showtiming:
         start_time = time.time()
     if verbose:
@@ -1264,7 +1349,7 @@ def main():
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
 
-        if run_parameters.get("return_courant", False):
+        if compute_parameters.get("return_courant", False):
             flowveldepth = pd.concat(
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
                 copy=False,
@@ -1275,7 +1360,7 @@ def main():
                 copy=False,
             )
 
-        if run_parameters.get("return_courant", False):
+        if compute_parameters.get("return_courant", False):
             courant_columns = pd.MultiIndex.from_product(
                 [range(nts), ["cn", "ck", "X"]]
             ).to_flat_index()
@@ -1307,7 +1392,7 @@ def main():
             flowveldepth = flowveldepth.sort_index()
             flowveldepth.to_csv(output_path.joinpath(filename_fvd))
 
-            if run_parameters.get("return_courant", False):
+            if compute_parameters.get("return_courant", False):
                 courant = courant.sort_index()
                 courant.to_csv(output_path.joinpath(filename_courant))
 
@@ -1338,12 +1423,7 @@ def main():
             start_time = time.time()
 
         build_tests.parity_check(
-            parity_parameters,
-            run_parameters,
-            None,
-            None,
-            None,
-            results,
+            parity_parameters, compute_parameters, None, None, None, results,
         )
 
         if verbose:
@@ -1358,4 +1438,171 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+
+    (
+        log_parameters,
+        supernetwork_parameters,
+        waterbody_parameters,
+        compute_parameters,
+        forcing_parameters,
+        restart_parameters,
+        output_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+        diffusive_parameters,
+    ) = _input_handler()
+
+    verbose = log_parameters.get("verbose", None)
+    showtiming = log_parameters.get("showtiming", None)
+    debuglevel = log_parameters.get("debuglevel", 0)
+
+    (
+        connections,
+        param_df,
+        wbodies,
+        waterbodies_df,
+        break_network_at_waterbodies,
+        independent_networks,
+        reaches_bytw,
+        rconn,
+    ) = nwm_network_preprocess(
+        supernetwork_parameters,
+        waterbody_parameters,
+        showtiming=showtiming,
+        verbose=verbose,
+        debuglevel=debuglevel,
+    )
+
+    waterbodies_df, q0 = nwm_initial_warmstate_preprocess(
+        break_network_at_waterbodies,
+        restart_parameters,
+        param_df,
+        waterbodies_df,
+        segment_list=None,
+        wbodies_list=None,
+        showtiming=showtiming,
+        verbose=verbose,
+        debuglevel=debuglevel,
+    )
+
+    run_sets = forcing_parameters.get("qlat_forcing_sets")
+
+    # The inputs below assume a very pedantic setup
+    # with each run set explicitly defined, so...
+    # TODO: Make this more flexible.
+
+    parallel_compute_method = (compute_parameters.get("parallel_compute_method", None),)
+    subnetwork_target_size = (compute_parameters.get("subnetwork_target_size", 1),)
+    cpu_pool = (compute_parameters.get("cpu_pool", None),)
+    qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
+
+    qlats, usgs_df = nwm_forcing_preprocess(
+        connections,
+        break_network_at_waterbodies,
+        run_sets[0],
+        forcing_parameters,
+        data_assimilation_parameters,
+        showtiming,
+        verbose,
+        debuglevel,
+    )
+
+    for ts_iterator, run in enumerate(run_sets):
+
+        dt = run.get("dt")
+        nts = run.get("nts")
+
+        run_results = nwm_route(
+            connections,
+            rconn,
+            wbodies,
+            reaches_bytw,
+            parallel_compute_method,
+            subnetwork_target_size,
+            cpu_pool,
+            dt,
+            nts,
+            qts_subdivisions,
+            independent_networks,
+            param_df,
+            q0,
+            qlats,
+            usgs_df,
+            compute_parameters.get("assume_short_ts", False),
+            compute_parameters.get("return_courant", False),
+            waterbodies_df,
+            diffusive_parameters,
+            showtiming,
+            verbose,
+            debuglevel,
+        )
+
+        if ts_iterator < len(run_sets) - 1:  # No forcing to prepare for the last loop
+            qlats, usgs_df = nwm_forcing_preprocess(
+                connections,
+                break_network_at_waterbodies,
+                run_sets[ts_iterator + 1],
+                forcing_parameters,
+                data_assimilation_parameters,
+                showtiming,
+                verbose,
+                debuglevel,
+            )
+
+
+        # nwm_output()
+
+    # nwm_final_output_generator()
+
+        '''
+        Asynchronous execution Psuedocode
+        Sync1: Prepare first warmstate from files
+        Sync1: Prepare first forcing from files
+
+        For first forcing set
+            Sync2a: run model
+            Sync2b: begin preparing next forcing
+            Sync3a - AFTER Sync2a, prepare next warmstate (last state of model run)
+            Sync3b: write any output from Sync2a
+            Loop has to wait for Sync2a+b+Sync3a, does not have to wait for Sync3b
+                  if next forcing prepared
+        '''
+
+### IGNORE BELOW THIS LINE ###
+        # TODO: Insert logic to execute only if needed for looping
+        qvd_columns = pd.MultiIndex.from_product(
+            [range(nts), ["q", "v", "d"]]
+        ).to_flat_index()
+        if compute_parameters.get("return_courant", False):
+            flowveldepth = pd.concat(
+                [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in run_results],
+                copy=False,
+            )
+        else:
+            flowveldepth = pd.concat(
+                [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in run_results],
+                copy=False,
+            )
+        # Output new restart CSV
+        restart_flows = flowveldepth.iloc[:, -3:]
+        restart_flows.index.name = "link"
+        restart_flows.columns = ["qu0", "qd0", "h0"]
+        iteration_restart_file_name = (
+            restart_parameters["wrf_hydro_channel_restart_file"][:-1]
+            + str(ts_iterator + 2)
+            + ".csv"
+        )
+        restart_flows.to_csv(iteration_restart_file_name)
+
+        if compute_parameters.get("return_courant", False):
+            courant_columns = pd.MultiIndex.from_product(
+                [range(nts), ["cn", "ck", "X"]]
+            ).to_flat_index()
+            courant = pd.concat(
+                [
+                    pd.DataFrame(c, index=i, columns=courant_columns)
+                    for i, d, c in run_results
+                ],
+                copy=False,
+            )
+
