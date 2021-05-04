@@ -398,6 +398,8 @@ def build_connections(supernetwork_parameters, dt):
     # TODO: Remove the dependence on dt in this function
 
     cols = supernetwork_parameters["columns"]
+    terminal_code = supernetwork_parameters.get("terminal_code", 0)
+
     param_df = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
 
     param_df = param_df[list(cols.values())]
@@ -413,9 +415,9 @@ def build_connections(supernetwork_parameters, dt):
         )
 
     param_df = param_df.sort_index()
-    param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
 
     connections = nhd_network.extract_connections(param_df, cols["downstream"])
+    param_df = nhd_io.replace_downstreams(param_df, "downstream", terminal_code)
 
     param_df["dt"] = dt
     param_df = param_df.rename(columns=reverse_dict(cols))
