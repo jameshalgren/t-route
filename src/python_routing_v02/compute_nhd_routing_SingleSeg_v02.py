@@ -17,6 +17,7 @@ A demonstration version of this code is stored in this Colaboratory notebook:
 import os
 import sys
 import time
+import asyncio
 from datetime import datetime
 import numpy as np
 import argparse
@@ -1541,7 +1542,9 @@ if __name__ == "__main__":
         debuglevel,
     )
 
-    for run_set_iterator, run in enumerate(run_sets):
+    loop = asyncio.get_event_loop()
+
+    for ts_iterator, run in enumerate(run_sets):
 
         dt = run.get("dt")
         nts = run.get("nts")
@@ -1549,7 +1552,7 @@ if __name__ == "__main__":
             parity_sets[run_set_iterator]["dt"] = dt
             parity_sets[run_set_iterator]["nts"] = nts
 
-        run_results = nwm_route(
+        execute_model = loop.run_in_executor(None, nwm_route,
             connections,
             rconn,
             wbodies,
@@ -1575,7 +1578,7 @@ if __name__ == "__main__":
         )
 
         if run_set_iterator < len(run_sets) - 1:  # No forcing to prepare for the last loop
-            qlats, usgs_df = nwm_forcing_preprocess(
+            build_next_forcing = loop.run_in_executor(None, nwm_forcing_preprocess,
                 connections,
                 break_network_at_waterbodies,
                 run_sets[run_set_iterator + 1],
@@ -1586,8 +1589,12 @@ if __name__ == "__main__":
                 debuglevel,
             )
 
-            #q0 = run_results
-            q0 = new_nwm_q0(run_results)
+        loop.run_until_complete(asyncio.gather(execute_model, build_next_forcing))
+        run_results = execute_model.result()  # gives us whatever is returned, once it is done.
+        qlats, usgs_df = build_next_forcing.result()  # gives us whatever is returned, once it is done.
+
+        #loop.run_until_complete(build_warm_state)
+        #loop.run: output
 
         nwm_output_generator(
             run_results,
