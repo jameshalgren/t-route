@@ -1445,6 +1445,20 @@ def nwm_output_generator(
             print("... in %s seconds." % (time.time() - start_time))
 
 
+def new_nwm_q0(run_results):
+    return pd.concat(
+        # TODO: we only need two fields, technically, and the restart file produced by WRF-Hydro
+        # actually contains a field qu0, which is never used for restart (the qu0 can be obtained
+        # as the qd0 from the topologically upstream segments, just like during the calculation).
+        # In any case, the qu0 currently in the WRF-Hydro output is populated with the same value
+        # as the qd0.
+        #[pd.DataFrame(d[:,-3::2], index=i, columns=["qd0", "h0"]) for i, d in run_results],
+        #[pd.DataFrame(r[1][:,-3:], index=r[0], columns=["qu0", "v0", "h0"]) for r in run_results],
+        [pd.DataFrame(r[1][:,[-3,-3,-1]], index=r[0], columns=["qu0", "qd0", "h0"]) for r in run_results],
+        copy=False,
+    )
+
+
 if __name__ == "__main__":
 
     (
@@ -1573,17 +1587,7 @@ if __name__ == "__main__":
             )
 
             #q0 = run_results
-            q0 = pd.concat(
-                # TODO: we only need two fields, technically, and the restart file produced by WRF-Hydro
-                # actually contains a field qu0, which is never used for restart (the qu0 can be obtained 
-                # as the qd0 from the topologically upstream segments, just like during the calculation). 
-                # In any case, the qu0 currently in the WRF-Hydro output is populated with the same value
-                # as the qd0. 
-                #[pd.DataFrame(d[:,-3::2], index=i, columns=["qd0", "h0"]) for i, d in run_results],
-                #[pd.DataFrame(r[1][:,-3:], index=r[0], columns=["qu0", "v0", "h0"]) for r in run_results],
-                [pd.DataFrame(d[:,[-3,-3,-1]], index=i, columns=["qu0", "qd0", "h0"]) for i, d in run_results],
-                copy=False,
-            )
+            q0 = new_nwm_q0(run_results)
 
         nwm_output_generator(
             run_results,
