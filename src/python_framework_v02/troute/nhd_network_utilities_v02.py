@@ -533,7 +533,7 @@ def build_qlateral_array(
         if "qlat_files" in forcing_parameters:
             qlat_files = forcing_parameters.get("qlat_files")
             qlat_files = [qlat_input_folder.joinpath(f) for f in qlat_files]
-        elif qlat_file_pattern_filter in forcing_parameters:
+        elif "qlat_file_pattern_filter" in forcing_parameters:
             qlat_file_pattern_filter = forcing_parameters.get(
                 "qlat_file_pattern_filter", "*CHRT_OUT*"
             )

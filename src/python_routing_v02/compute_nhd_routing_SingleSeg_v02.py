@@ -1027,9 +1027,6 @@ def nwm_network_preprocess(
     debuglevel=0,
 ):
 
-    if showtiming:
-        main_start_time = time.time()
-
     if verbose:
         print("creating supernetwork connections set")
     if showtiming:
@@ -1328,7 +1325,28 @@ def nwm_route(
     return results
 
 
-def nwm_output_generator():
+def nwm_output_generator(
+    results,
+    output_parameters,
+    parity_parameters,
+    parity_set,
+    return_courant,
+    showtiming=False,
+    verbose=False,
+    debuglevel=0,
+):
+
+    parity_check_input_folder = parity_parameters.get("parity_check_input_folder", None)
+    parity_check_file_index_col = parity_parameters.get("parity_check_file_index_col", None)
+    parity_check_file_value_col = parity_parameters.get("parity_check_file_value_col", None)
+    parity_check_compare_node = parity_parameters.get("parity_check_compare_node", None)
+
+    # TODO: find a better way to deal with these defaults and overrides.
+    parity_set["parity_check_input_folder"] = parity_set.get("parity_check_input_folder", parity_check_input_folder)
+    parity_set["parity_check_file_index_col"] = parity_set.get("parity_check_file_index_col", parity_check_file_index_col)
+    parity_set["parity_check_file_value_col"] = parity_set.get("parity_check_file_value_col", parity_check_file_value_col)
+    parity_set["parity_check_compare_node"] = parity_set.get("parity_check_compare_node", parity_check_compare_node)
+
     ################### Output Handling
     if showtiming:
         start_time = time.time()
@@ -1349,18 +1367,12 @@ def nwm_output_generator():
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
 
-        if compute_parameters.get("return_courant", False):
-            flowveldepth = pd.concat(
-                [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
-                copy=False,
-            )
-        else:
-            flowveldepth = pd.concat(
-                [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
-                copy=False,
-            )
+        flowveldepth = pd.concat(
+            [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
+            copy=False,
+        )
 
-        if compute_parameters.get("return_courant", False):
+        if return_courant:
             courant_columns = pd.MultiIndex.from_product(
                 [range(nts), ["cn", "ck", "X"]]
             ).to_flat_index()
@@ -1392,7 +1404,7 @@ def nwm_output_generator():
             flowveldepth = flowveldepth.sort_index()
             flowveldepth.to_csv(output_path.joinpath(filename_fvd))
 
-            if compute_parameters.get("return_courant", False):
+            if return_courant:
                 courant = courant.sort_index()
                 courant.to_csv(output_path.joinpath(filename_courant))
 
@@ -1423,18 +1435,14 @@ def nwm_output_generator():
             start_time = time.time()
 
         build_tests.parity_check(
-            parity_parameters, compute_parameters, None, None, None, results,
+            parity_set,
+            run_results,
         )
 
         if verbose:
             print("parity check complete")
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
-
-    if verbose:
-        print("process complete")
-    if showtiming:
-        print("%s seconds." % (time.time() - main_start_time))
 
 
 if __name__ == "__main__":
@@ -1455,6 +1463,9 @@ if __name__ == "__main__":
     verbose = log_parameters.get("verbose", None)
     showtiming = log_parameters.get("showtiming", None)
     debuglevel = log_parameters.get("debuglevel", 0)
+
+    if showtiming:
+        main_start_time = time.time()
 
     (
         connections,
@@ -1485,7 +1496,11 @@ if __name__ == "__main__":
         debuglevel=debuglevel,
     )
 
-    run_sets = forcing_parameters.get("qlat_forcing_sets")
+    run_sets = forcing_parameters.get("qlat_forcing_sets", False)
+    if "wrf_hydro_parity_check" in output_parameters:
+        parity_sets = parity_parameters.get("parity_check_compare_file_sets", False)
+    else:
+        parity_sets = []
 
     # The inputs below assume a very pedantic setup
     # with each run set explicitly defined, so...
@@ -1507,10 +1522,13 @@ if __name__ == "__main__":
         debuglevel,
     )
 
-    for ts_iterator, run in enumerate(run_sets):
+    for run_set_iterator, run in enumerate(run_sets):
 
         dt = run.get("dt")
         nts = run.get("nts")
+        if parity_sets:
+            parity_sets[run_set_iterator]["dt"] = dt
+            parity_sets[run_set_iterator]["nts"] = nts
 
         run_results = nwm_route(
             connections,
@@ -1537,11 +1555,11 @@ if __name__ == "__main__":
             debuglevel,
         )
 
-        if ts_iterator < len(run_sets) - 1:  # No forcing to prepare for the last loop
+        if run_set_iterator < len(run_sets) - 1:  # No forcing to prepare for the last loop
             qlats, usgs_df = nwm_forcing_preprocess(
                 connections,
                 break_network_at_waterbodies,
-                run_sets[ts_iterator + 1],
+                run_sets[run_set_iterator + 1],
                 forcing_parameters,
                 data_assimilation_parameters,
                 showtiming,
@@ -1549,10 +1567,37 @@ if __name__ == "__main__":
                 debuglevel,
             )
 
+            #q0 = run_results
+            q0 = pd.concat(
+                # TODO: we only need two fields, technically, and the restart file produced by WRF-Hydro
+                # actually contains a field qu0, which is never used for restart (the qu0 can be obtained 
+                # as the qd0 from the topologically upstream segments, just like during the calculation). 
+                # In any case, the qu0 currently in the WRF-Hydro output is populated with the same value
+                # as the qd0. 
+                #[pd.DataFrame(d[:,-3::2], index=i, columns=["qd0", "h0"]) for i, d in run_results],
+                #[pd.DataFrame(r[1][:,-3:], index=r[0], columns=["qu0", "v0", "h0"]) for r in run_results],
+                [pd.DataFrame(d[:,[-3,-3,-1]], index=i, columns=["qu0", "qd0", "h0"]) for i, d in run_results],
+                copy=False,
+            )
 
-        # nwm_output()
+        nwm_output_generator(
+            run_results,
+            output_parameters,
+            parity_parameters,
+            parity_sets[run_set_iterator],
+            compute_parameters.get("return_courant", False),
+            showtiming,
+            verbose,
+            debuglevel,
+        )
 
     # nwm_final_output_generator()
+
+    if verbose:
+        print("process complete")
+    if showtiming:
+        print("%s seconds." % (time.time() - main_start_time))
+
 
         '''
         Asynchronous execution Psuedocode
@@ -1567,42 +1612,4 @@ if __name__ == "__main__":
             Loop has to wait for Sync2a+b+Sync3a, does not have to wait for Sync3b
                   if next forcing prepared
         '''
-
-### IGNORE BELOW THIS LINE ###
-        # TODO: Insert logic to execute only if needed for looping
-        qvd_columns = pd.MultiIndex.from_product(
-            [range(nts), ["q", "v", "d"]]
-        ).to_flat_index()
-        if compute_parameters.get("return_courant", False):
-            flowveldepth = pd.concat(
-                [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in run_results],
-                copy=False,
-            )
-        else:
-            flowveldepth = pd.concat(
-                [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in run_results],
-                copy=False,
-            )
-        # Output new restart CSV
-        restart_flows = flowveldepth.iloc[:, -3:]
-        restart_flows.index.name = "link"
-        restart_flows.columns = ["qu0", "qd0", "h0"]
-        iteration_restart_file_name = (
-            restart_parameters["wrf_hydro_channel_restart_file"][:-1]
-            + str(ts_iterator + 2)
-            + ".csv"
-        )
-        restart_flows.to_csv(iteration_restart_file_name)
-
-        if compute_parameters.get("return_courant", False):
-            courant_columns = pd.MultiIndex.from_product(
-                [range(nts), ["cn", "ck", "X"]]
-            ).to_flat_index()
-            courant = pd.concat(
-                [
-                    pd.DataFrame(c, index=i, columns=courant_columns)
-                    for i, d, c in run_results
-                ],
-                copy=False,
-            )
 

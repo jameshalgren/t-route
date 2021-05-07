@@ -63,7 +63,7 @@ def read_custom_input_new(custom_input_file):
         "data_assimilation_parameters", {}
     )
     output_parameters = data.get("output_parameters", {})
-    parity_parameters = output_parameters.get("parity_parameters", {})
+    parity_parameters = output_parameters.get("wrf_hydro_parity_check", {})
 
     # TODO: add error trapping for potentially missing files
     return (

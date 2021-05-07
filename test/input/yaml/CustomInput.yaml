@@ -99,25 +99,21 @@ compute_parameters:
                 - 201801010700.CHRTOUT_DOMAIN1
                 - 201801010800.CHRTOUT_DOMAIN1
                 - 201801010900.CHRTOUT_DOMAIN1
-              nts: 48  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
-            - qlat_files:
                 - 201801011000.CHRTOUT_DOMAIN1
                 - 201801011100.CHRTOUT_DOMAIN1
                 - 201801011200.CHRTOUT_DOMAIN1
                 - 201801011300.CHRTOUT_DOMAIN1
-              nts: 48  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
+              nts: 96  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
             - qlat_files:
                 - 201801011400.CHRTOUT_DOMAIN1
                 - 201801011500.CHRTOUT_DOMAIN1
                 - 201801011600.CHRTOUT_DOMAIN1
                 - 201801011700.CHRTOUT_DOMAIN1
-              nts: 48  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
-            - qlat_files:
                 - 201801011800.CHRTOUT_DOMAIN1
                 - 201801011900.CHRTOUT_DOMAIN1
                 - 201801012000.CHRTOUT_DOMAIN1
                 - 201801012100.CHRTOUT_DOMAIN1
-              nts: 48  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
+              nts: 96  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
             - qlat_files:
                 - 201801012200.CHRTOUT_DOMAIN1
                 - 201801012300.CHRTOUT_DOMAIN1
@@ -137,10 +133,39 @@ output_parameters:
     #WRF-Hydro output file
     wrf_hydro_parity_check:
         parity_check_input_folder: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/"
-        parity_check_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
+        # parity_check_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
         parity_check_file_index_col: feature_id
         parity_check_file_value_col: streamflow
         parity_check_compare_node: 4186169
+        parity_check_compare_file_sets:
+            - validation_files:
+                - 201801010200.CHRTOUT_DOMAIN1
+                - 201801010300.CHRTOUT_DOMAIN1
+                - 201801010400.CHRTOUT_DOMAIN1
+                - 201801010500.CHRTOUT_DOMAIN1
+            - validation_files:
+                - 201801010600.CHRTOUT_DOMAIN1
+                - 201801010700.CHRTOUT_DOMAIN1
+                - 201801010800.CHRTOUT_DOMAIN1
+                - 201801010900.CHRTOUT_DOMAIN1
+                - 201801011000.CHRTOUT_DOMAIN1
+                - 201801011100.CHRTOUT_DOMAIN1
+                - 201801011200.CHRTOUT_DOMAIN1
+                - 201801011300.CHRTOUT_DOMAIN1
+            - validation_files:
+                - 201801011400.CHRTOUT_DOMAIN1
+                - 201801011500.CHRTOUT_DOMAIN1
+                - 201801011600.CHRTOUT_DOMAIN1
+                - 201801011700.CHRTOUT_DOMAIN1
+                - 201801011800.CHRTOUT_DOMAIN1
+                - 201801011900.CHRTOUT_DOMAIN1
+                - 201801012000.CHRTOUT_DOMAIN1
+                - 201801012100.CHRTOUT_DOMAIN1
+            - validation_files:
+                - 201801012200.CHRTOUT_DOMAIN1
+                - 201801012300.CHRTOUT_DOMAIN1
+                - 201801020000.CHRTOUT_DOMAIN1
+                - 201801020100.CHRTOUT_DOMAIN1
         # parity_check_compare_node: 2743396
         # parity_check_compare_node: 4185265
         # Tailwaters [2743396, 2743016, 4153198, 4185713, 4186293]
