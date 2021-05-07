@@ -1445,6 +1445,18 @@ def nwm_output_generator(
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
 
+def new_nwm_q0(run_results):
+    return pd.concat(
+        # TODO: we only need two fields, technically, and the restart file produced by WRF-Hydro
+        # actually contains a field qu0, which is never used for restart (the qu0 can be obtained
+        # as the qd0 from the topologically upstream segments, just like during the calculation).
+        # In any case, the qu0 currently in the WRF-Hydro output is populated with the same value
+        # as the qd0.
+        #[pd.DataFrame(d[:,-3::2], index=i, columns=["qd0", "h0"]) for i, d in run_results],
+        #[pd.DataFrame(r[1][:,-3:], index=r[0], columns=["qu0", "v0", "h0"]) for r in run_results],
+        [pd.DataFrame(r[1][:,[-3,-3,-1]], index=r[0], columns=["qu0", "qd0", "h0"]) for r in run_results],
+        copy=False,
+    )
 
 def new_nwm_q0(run_results):
     return pd.concat(
@@ -1544,7 +1556,7 @@ if __name__ == "__main__":
 
     loop = asyncio.get_event_loop()
 
-    for ts_iterator, run in enumerate(run_sets):
+    for run_set_iterator, run in enumerate(run_sets):
 
         dt = run.get("dt")
         nts = run.get("nts")
@@ -1595,8 +1607,19 @@ if __name__ == "__main__":
 
         #loop.run_until_complete(build_warm_state)
         #loop.run: output
+        # TODO: This may create the last forcing twice -- Fix it.
+        if run_set_iterator < len(run_sets) - 1:
+            loop.run_until_complete(asyncio.gather(execute_model, build_next_forcing))
+            run_results = execute_model.result()  # gives us whatever is returned, once it is done.
+            qlats, usgs_df = build_next_forcing.result()  # gives us whatever is returned, once it is done.
+            new_q0 = loop.run_in_executor(None, new_nwm_q0, run_results)
+            loop.run_until_complete(asyncio.gather(new_q0))
+            q0 = new_q0.result()
+        else:
+            loop.run_until_complete(asyncio.gather(execute_model))
+            run_results = execute_model.result()  # gives us whatever is returned, once it is done.
 
-        nwm_output_generator(
+        output_last_run = loop.run_in_executor(None, nwm_output_generator,
             run_results,
             output_parameters,
             parity_parameters,
@@ -1606,6 +1629,7 @@ if __name__ == "__main__":
             verbose,
             debuglevel,
         )
+        loop.run_until_complete(output_last_run)
 
     # nwm_final_output_generator()
 
