@@ -1496,15 +1496,20 @@ if __name__ == "__main__":
         debuglevel=debuglevel,
     )
 
-    run_sets = forcing_parameters.get("qlat_forcing_sets", False)
-    if "wrf_hydro_parity_check" in output_parameters:
-        parity_sets = parity_parameters.get("parity_check_compare_file_sets", False)
-    else:
-        parity_sets = []
 
     # The inputs below assume a very pedantic setup
     # with each run set explicitly defined, so...
     # TODO: Make this more flexible.
+    run_sets = forcing_parameters.get("qlat_forcing_sets", False)
+
+    # TODO: Data Assimilation will be something like the parity block
+    # if DA:
+    #     da_sets = [BIG LIST OF DA BLOCKS]
+
+    if "wrf_hydro_parity_check" in output_parameters:
+        parity_sets = parity_parameters.get("parity_check_compare_file_sets", False)
+    else:
+        parity_sets = []
 
     parallel_compute_method = (compute_parameters.get("parallel_compute_method", None),)
     subnetwork_target_size = (compute_parameters.get("subnetwork_target_size", 1),)

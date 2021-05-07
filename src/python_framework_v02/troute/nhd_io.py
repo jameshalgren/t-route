@@ -182,6 +182,7 @@ def read_qlat(path):
     return get_ql_from_csv(path)
 
 
+#TODO: Generalize this name -- perhaps `read_wrf_hydro_chrt_mf()`
 def get_ql_from_wrf_hydro_mf(
     qlat_files,
     index_col="feature_id",
@@ -227,6 +228,7 @@ def get_ql_from_wrf_hydro_mf(
     2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
     ```
     """
+    #TODO: Add a filtering capability and check performance improvement
     filter_list = None
 
     with xr.open_mfdataset(
