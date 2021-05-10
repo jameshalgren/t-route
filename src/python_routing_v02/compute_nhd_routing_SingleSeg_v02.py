@@ -1224,6 +1224,10 @@ def nwm_forcing_preprocess(
     data_assimilation_filter = data_assimilation_parameters.get(
         "data_assimilation_filter", None
     )
+
+    if data_assimilation_filter and data_assimilation_csv:
+        print("ISSUE: Please select data_assimilation_parameters_folder + data_assimilation_filter or data_assimilation_csv not both.")
+
     if data_assimilation_csv or data_assimilation_filter:
         if showtiming:
             start_time = time.time()
@@ -1606,9 +1610,6 @@ if __name__ == "__main__":
         print("process complete")
     if showtiming:
         print("%s seconds." % (time.time() - main_start_time))
-
-    if data_assimilation_filter and data_assimilation_csv:
-        print("ISSUE: Please select data_assimilation_parameters_folder/data_assimilation_filter or data_assimilation_csv not both.")
 
         '''
         Asynchronous execution Psuedocode
