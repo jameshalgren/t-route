@@ -17,6 +17,7 @@ A demonstration version of this code is stored in this Colaboratory notebook:
 import os
 import sys
 import time
+import asyncio
 from datetime import datetime
 import numpy as np
 import argparse
@@ -1448,7 +1449,6 @@ def nwm_output_generator(
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
 
-
 def new_nwm_q0(run_results):
     return pd.concat(
         # TODO: we only need two fields, technically, and the restart file produced by WRF-Hydro
@@ -1545,6 +1545,8 @@ if __name__ == "__main__":
         debuglevel,
     )
 
+    loop = asyncio.get_event_loop()
+
     for run_set_iterator, run in enumerate(run_sets):
 
         dt = run.get("dt")
@@ -1553,7 +1555,7 @@ if __name__ == "__main__":
             parity_sets[run_set_iterator]["dt"] = dt
             parity_sets[run_set_iterator]["nts"] = nts
 
-        run_results = nwm_route(
+        execute_model = loop.run_in_executor(None, nwm_route,
             connections,
             rconn,
             wbodies,
@@ -1579,7 +1581,7 @@ if __name__ == "__main__":
         )
 
         if run_set_iterator < len(run_sets) - 1:  # No forcing to prepare for the last loop
-            qlats, usgs_df = nwm_forcing_preprocess(
+            build_next_forcing = loop.run_in_executor(None, nwm_forcing_preprocess,
                 connections,
                 break_network_at_waterbodies,
                 run_sets[run_set_iterator + 1],
@@ -1590,10 +1592,21 @@ if __name__ == "__main__":
                 debuglevel,
             )
 
-            #q0 = run_results
-            q0 = new_nwm_q0(run_results)
 
-        nwm_output_generator(
+        if run_set_iterator < len(run_sets) - 1:  # Only prepare the next forcing if there is one.
+            # Run the model, trigger preparation of next model forcing.
+            loop.run_until_complete(asyncio.gather(execute_model, build_next_forcing))
+            run_results = execute_model.result()  # gives us whatever is returned, once it is done.
+            qlats, usgs_df = build_next_forcing.result()  # gives us whatever is returned, once it is done.
+            # When model is complete, prepare next warmstate
+            new_q0 = loop.run_in_executor(None, new_nwm_q0, run_results)
+            loop.run_until_complete(asyncio.gather(new_q0))
+            q0 = new_q0.result()
+        else:  # For the last loop, no next forcing or warm state is needed for execution.
+            loop.run_until_complete(asyncio.gather(execute_model))
+            run_results = execute_model.result()  # gives us whatever is returned, once it is done.
+
+        output_last_run = loop.run_in_executor(None, nwm_output_generator,
             run_results,
             output_parameters,
             parity_parameters,
@@ -1603,6 +1616,8 @@ if __name__ == "__main__":
             verbose,
             debuglevel,
         )
+        # Create output -- no waiting needed.
+        loop.run_until_complete(output_last_run)
 
     # nwm_final_output_generator()
 
