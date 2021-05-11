@@ -1588,21 +1588,17 @@ if __name__ == "__main__":
                 debuglevel,
             )
 
-        loop.run_until_complete(asyncio.gather(execute_model, build_next_forcing))
-        run_results = execute_model.result()  # gives us whatever is returned, once it is done.
-        qlats, usgs_df = build_next_forcing.result()  # gives us whatever is returned, once it is done.
 
-        #loop.run_until_complete(build_warm_state)
-        #loop.run: output
-        # TODO: This may create the last forcing twice -- Fix it.
-        if run_set_iterator < len(run_sets) - 1:
+        if run_set_iterator < len(run_sets) - 1:  # Only prepare the next forcing if there is one.
+            # Run the model, trigger preparation of next model forcing.
             loop.run_until_complete(asyncio.gather(execute_model, build_next_forcing))
             run_results = execute_model.result()  # gives us whatever is returned, once it is done.
             qlats, usgs_df = build_next_forcing.result()  # gives us whatever is returned, once it is done.
+            # When model is complete, prepare next warmstate
             new_q0 = loop.run_in_executor(None, new_nwm_q0, run_results)
             loop.run_until_complete(asyncio.gather(new_q0))
             q0 = new_q0.result()
-        else:
+        else:  # For the last loop, no next forcing or warm state is needed for execution.
             loop.run_until_complete(asyncio.gather(execute_model))
             run_results = execute_model.result()  # gives us whatever is returned, once it is done.
 
@@ -1616,6 +1612,7 @@ if __name__ == "__main__":
             verbose,
             debuglevel,
         )
+        # Create output -- no waiting needed.
         loop.run_until_complete(output_last_run)
 
     # nwm_final_output_generator()
