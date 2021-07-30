@@ -273,6 +273,7 @@ def compute_nhd_routing_v02(
                     jobs.append(
                         delayed(compute_func)(
                             nts,
+                            dt,
                             qts_subdivisions,
                             subn_reach_list_with_type,
                             upstreams,
@@ -495,6 +496,7 @@ def compute_nhd_routing_v02(
                     jobs.append(
                         delayed(compute_func)(
                             nts,
+                            dt,
                             qts_subdivisions,
                             subn_reach_list_with_type,
                             subnetworks[subn_tw],
@@ -910,6 +912,7 @@ def compute_nhd_routing_v02(
                 jobs.append(
                     delayed(compute_func)(
                         nts,
+                        dt,
                         qts_subdivisions,
                         reaches_list_with_type,
                         independent_networks[tw],
@@ -1056,6 +1059,7 @@ def compute_nhd_routing_v02(
             results.append(
                 compute_func(
                     nts,
+                    dt,
                     qts_subdivisions,
                     reaches_list_with_type,
                     independent_networks[tw],
