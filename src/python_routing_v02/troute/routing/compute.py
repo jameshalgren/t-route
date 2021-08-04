@@ -486,10 +486,9 @@ def compute_nhd_routing_v02(
                                 "position_index"
                             ] = subn_tw_sortposition
 
-                    subn_reach_list_with_type = []
-
                     usgs_df_sub, lastobs_df_sub, da_positions_list = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
 
+                    subn_reach_list_with_type = []
                     for reaches in subn_reach_list:
                         if set(reaches) & wbodies_segs:
                             reach_type = 1  # type 1 for waterbody/lake
@@ -692,7 +691,6 @@ def compute_nhd_routing_v02(
                                 "position_index"
                             ] = subn_tw_sortposition
 
-                        
                     usgs_df_sub, lastobs_df_sub, da_positions_list = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
 
                     subn_reach_list_with_type = []
@@ -705,8 +703,6 @@ def compute_nhd_routing_v02(
                         reach_and_type_tuple = (reaches, reach_type)
 
                         subn_reach_list_with_type.append(reach_and_type_tuple)
-
-                    lastobs_sub = pd.DataFrame()
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
