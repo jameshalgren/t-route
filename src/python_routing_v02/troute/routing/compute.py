@@ -30,7 +30,7 @@ _compute_func_map = defaultdict(
 def compute_nhd_routing_v02(
     connections,
     rconn,
-    wbody_conn,  # TODO: We never use this argument... delete it!!!
+    wbody_conn,
     reaches_bytw,
     compute_func_name,
     parallel_compute_method,
@@ -222,7 +222,7 @@ def compute_nhd_routing_v02(
                     USGS_DF, LAST_OBS
                     Yes, Yes: Analysis and Assimilation; Last_Obs used to fill gaps in the front of the time series
                     No, Yes: Forecasting mode;
-                    Yes, No; Anomaly case; fine for testing, but if there are gaps in the front of the time series, what would we do?
+                    Yes, No; Cold-start case;
                     No, No: Open-Loop;
 
                     For both cases where USGS_DF is present, there is a sub-case where the length of the observed
@@ -364,6 +364,7 @@ def compute_nhd_routing_v02(
                             diffusive_parameters,
                         )
                     )
+
                 results_subn[order] = parallel(jobs)
 
                 if order > 0:  # This is not needed for the last rank of subnetworks
@@ -510,7 +511,7 @@ def compute_nhd_routing_v02(
                     USGS_DF, LAST_OBS
                     Yes, Yes: Analysis and Assimilation; Last_Obs used to fill gaps in the front of the time series
                     No, Yes: Forecasting mode;
-                    Yes, No; Anomaly case; fine for testing, but if there are gaps in the front of the time series, what would we do?
+                    Yes, No; Cold-start case;
                     No, No: Open-Loop;
 
                     For both cases where USGS_DF is present, there is a sub-case where the length of the observed
@@ -943,13 +944,12 @@ def compute_nhd_routing_v02(
                     ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                 ].sort_index()
 
-                # TODO: Combine/streamline the next two logic blocks for usgs_df, last_obs, etc.
                 """
                 Options:
                 USGS_DF, LAST_OBS
                 Yes, Yes: Analysis and Assimilation; Last_Obs used to fill gaps in the front of the time series
                 No, Yes: Forecasting mode;
-                Yes, No; Anomaly case; fine for testing, but if there are gaps in the front of the time series, what would we do?
+                Yes, No; Cold-start case;
                 No, No: Open-Loop;
 
                 For both cases where USGS_DF is present, there is a sub-case where the length of the observed
@@ -1062,6 +1062,7 @@ def compute_nhd_routing_v02(
                         diffusive_parameters,
                     )
                 )
+
             results = parallel(jobs)
 
     else:  # Execute in serial
