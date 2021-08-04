@@ -993,24 +993,43 @@ def compute_nhd_routing_v02(
                 common_segs,
                 ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
             ].sort_index()
-
-            if not usgs_df.empty:
+            
+            if not usgs_df.empty and not last_obs_df.empty:
+                # index values for last obs are not correct, but line up correctly with usgs values. Switched
+                usgs_df = usgs_df.loc[last_obs_df.index]
+                lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                last_obs_sub = last_obs_df.loc[lastobs_segs]
+                #need to match it up with last obs date within usgs
+                decay_timestep_array = np.full(shape=len(usgs_df),fill_value=1,dtype=np.int)
                 usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                 usgs_df_sub = usgs_df.loc[usgs_segs]
-                usgs_df_sub.drop(usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True)
+                usgs_df_sub.drop(
+                    usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
+                )
+            elif usgs_df.empty and not last_obs_df.empty:
+                lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                last_obs_sub = last_obs_df.loc[lastobs_segs]
+                #need to match it up with last obs date within usgs
+                decay_timestep_array = np.full(shape=len(usgs_df),fill_value=1,dtype=np.int)
+                # Create a completely empty list of gages -- the .shape[1] attribute
+                # will be == 0, and that will trigger a reference to the lastobs.
+                # in the compute kernel below.
+                usgs_df_sub = pd.DataFrame(index=[last_obs_sub.index],columns=[])
+                usgs_segs = lastobs_segs
+                nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+            elif not usgs_df.empty and last_obs_df.empty:
+                usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
+                nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
+                usgs_df_sub = usgs_df.loc[usgs_segs]
+                usgs_df_sub.drop(
+                    usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
+                )
+                lastobs_df_sub = pd.DataFrame(index=[usgs_df_sub.index],columns=["discharge","time","model_discharge"])
             else:
                 usgs_df_sub = pd.DataFrame()
-                nudging_positions_list = []
-
-            if not last_obs_df.empty:
-                pass
-            #     lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-            #     nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
-            #     last_obs_sub = last_obs_df.loc[lastobs_segs]
-            else:
                 last_obs_sub = pd.DataFrame()
-            #     nudging_positions_list = []
+                nudging_positions_list = []
 
             # qlat_sub = qlats.loc[common_segs].sort_index()
             # q0_sub = q0.loc[common_segs].sort_index()
@@ -1055,7 +1074,6 @@ def compute_nhd_routing_v02(
 
                 reaches_list_with_type.append(reach_and_type_tuple)
             """
-
             results.append(
                 compute_func(
                     nts,
@@ -1076,7 +1094,8 @@ def compute_nhd_routing_v02(
                     model_start_time,
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
-                    last_obs_sub.values.astype("float32"),
+                    last_obs_sub.get("last_obs_discharge", pd.Series(index=last_obs_sub.index, name="Null")).values.astype("float32"),
+                    last_obs_sub.get("time_since_lastobs", pd.Series(index=last_obs_sub.index, name="Null")).values.astype("float32"),
                     {},
                     assume_short_ts,
                     return_courant,
