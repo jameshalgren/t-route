@@ -418,7 +418,7 @@ cpdef object compute_network(
                                    buf_view)
 
                 for i in range(scols.shape[0]):
-                        fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
+                    fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
 
                 # fill buffer with qdp, depthp, velp
                 fill_buffer_column(srows, ts_offset - qvd_ts_w, drows, 10, flowveldepth, buf_view)
@@ -452,7 +452,7 @@ cpdef object compute_network(
                                 # adding the reach-based filter would be the next level.
 
                     for gage_i in range(gages_size):
-                        usgs_position_i = usgs_positions[gage_i] 
+                        usgs_position_i = usgs_positions[gage_i]
                         # TODO: It is possible to remove the following branching logic if
                         # we just loop over the timesteps during DA and post-DA, if that
                         # is a major performance optimization. On the flip side, it would
@@ -460,7 +460,7 @@ cpdef object compute_network(
                         if (timestep < gage_maxtimestep and not isnan(usgs_values[gage_i,timestep])):
                             flowveldepth[usgs_position_i, ts_offset] = usgs_values[gage_i, timestep]
                             # add/update lastobs_timestep
-                            lastobs_timestep[gage_i] = timestep 
+                            lastobs_timestep[gage_i] = timestep
                             lastobs_values[gage_i] = usgs_values[gage_i, timestep]
                         else:
                             a = 120  # TODO: pull this a value from the config file somehow
@@ -853,15 +853,15 @@ cpdef object compute_network_structured_obj(
                       reach_type)#lp_reservoir)
                     )
                 wbody_index += 1
-             
+
             else:
                 #If reservoir_type is 1, then initialize Level Pool reservoir
                 if (reservoir_types[wbody_index][0] == 1):
-            
+
                     reach_objects.append(
                         #tuple of MC_Reservoir, reach_type, and lp_reservoir
                         (
-                          MC_Levelpool(my_id[0], lake_numbers_col[wbody_index], 
+                          MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
                           array('l',upstream_ids), wbody_parameters[wbody_index]),
                           reach_type)#lp_reservoir)
                         )
@@ -874,7 +874,7 @@ cpdef object compute_network_structured_obj(
                     reach_objects.append(
                         #tuple of MC_Reservoir, reach_type, and hybrid_reservoir
                         (
-                          MC_Hybrid(my_id[0], lake_numbers_col[wbody_index], 
+                          MC_Hybrid(my_id[0], lake_numbers_col[wbody_index],
                           array('l',upstream_ids), wbody_parameters[wbody_index],
                           reservoir_types[wbody_index][0],
                           waterbody_parameters["hybrid_and_rfc"]["reservoir_parameter_file"],
@@ -894,7 +894,7 @@ cpdef object compute_network_structured_obj(
                     reach_objects.append(
                         #tuple of MC_Reservoir, reach_type, and rfc_reservoir
                         (
-                          MC_RFC(my_id[0], lake_numbers_col[wbody_index], 
+                          MC_RFC(my_id[0], lake_numbers_col[wbody_index],
                           array('l',upstream_ids), wbody_parameters[wbody_index],
                           reservoir_types[wbody_index][0],
                           waterbody_parameters["hybrid_and_rfc"]["reservoir_parameter_file"],
@@ -936,73 +936,73 @@ cpdef object compute_network_structured_obj(
 
     #Run time
     while timestep < nsteps+1:
-      for r, reach_type in reach_objects:
+        for r, reach_type in reach_objects:
 
         #Need to get quc and qup
-        upstream_flows = 0.0
-        previous_upstream_flows = 0.0
-        for id in r.upstream_ids: #Explicit loop reduces some overhead
-          upstream_flows += flowveldepth[id, timestep, 0]
-          previous_upstream_flows += flowveldepth[id, timestep-1, 0]
+            upstream_flows = 0.0
+            previous_upstream_flows = 0.0
+            for id in r.upstream_ids: #Explicit loop reduces some overhead
+                upstream_flows += flowveldepth[id, timestep, 0]
+                previous_upstream_flows += flowveldepth[id, timestep-1, 0]
 
-        if assume_short_ts:
-          upstream_flows = previous_upstream_flows
+            if assume_short_ts:
+                upstream_flows = previous_upstream_flows
 
-        #Check if reach_type is 1 for reservoir/waterbody
-        if (reach_type == 1):
+            #Check if reach_type is 1 for reservoir/waterbody
+            if (reach_type == 1):
             #TODO: dt is currently held by the segment. Need to find better place to hold dt
-            routing_period = 300.0  # TODO: Fix this hardcoded value to pull from dt
+                routing_period = 300.0  # TODO: Fix this hardcoded value to pull from dt
 
-            reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
+                reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
 
-            flowveldepth[r.id, timestep, 0] = reservoir_outflow
-            flowveldepth[r.id, timestep, 1] = 0.0
-            flowveldepth[r.id, timestep, 2] = water_elevation
+                flowveldepth[r.id, timestep, 0] = reservoir_outflow
+                flowveldepth[r.id, timestep, 1] = 0.0
+                flowveldepth[r.id, timestep, 2] = water_elevation
 
-        else:
+            else:
 
-            #Index of segments required to process this reach
-            segment_ids = []
+                #Index of segments required to process this reach
+                segment_ids = []
 
-            #Create compute reach kernel input buffer
-            for i, segment in enumerate(r):
-                segment_ids.append(segment['id'])
-                buf_view[i, 0] = qlat_array[ segment['id'], int((timestep-1)/qlat_resample)]
-                buf_view[i, 1] = segment['dt']
-                buf_view[i, 2] = segment['dx']
-                buf_view[i, 3] = segment['bw']
-                buf_view[i, 4] = segment['tw']
-                buf_view[i, 5] = segment['twcc']
-                buf_view[i, 6] = segment['n']
-                buf_view[i, 7] = segment['ncc']
-                buf_view[i, 8] = segment['cs']
-                buf_view[i, 9] = segment['s0']
-                buf_view[i, 10] = flowveldepth[segment['id'], timestep-1, 0]
-                buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
-                buf_view[i, 12] = flowveldepth[segment['id'], timestep-1, 2]
+                #Create compute reach kernel input buffer
+                for i, segment in enumerate(r):
+                    segment_ids.append(segment['id'])
+                    buf_view[i, 0] = qlat_array[ segment['id'], int((timestep-1)/qlat_resample)]
+                    buf_view[i, 1] = segment['dt']
+                    buf_view[i, 2] = segment['dx']
+                    buf_view[i, 3] = segment['bw']
+                    buf_view[i, 4] = segment['tw']
+                    buf_view[i, 5] = segment['twcc']
+                    buf_view[i, 6] = segment['n']
+                    buf_view[i, 7] = segment['ncc']
+                    buf_view[i, 8] = segment['cs']
+                    buf_view[i, 9] = segment['s0']
+                    buf_view[i, 10] = flowveldepth[segment['id'], timestep-1, 0]
+                    buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
+                    buf_view[i, 12] = flowveldepth[segment['id'], timestep-1, 2]
 
-                compute_reach_kernel(previous_upstream_flows, upstream_flows,
-                                        len(r), buf_view,
-                                        out_buf,
-                                        assume_short_ts)
+                    compute_reach_kernel(previous_upstream_flows, upstream_flows,
+                                            len(r), buf_view,
+                                            out_buf,
+                                            assume_short_ts)
 
-            # replace initial conditions with gage observations, wherever available
+                # replace initial conditions with gage observations, wherever available
 
-        if gages_size:
-            lastobs_timestep = np.full(gages_size, -1, dtype='int32')
-            lastobs_values = np.zeros(gages_size, dtype='float32')
-            for gage_i in range(gages_size):
-                lastobs_values[gage_i] = lastobs_values_init[gage_i]
+            if gages_size:
+                lastobs_timestep = np.full(gages_size, -1, dtype='int32')
+                lastobs_values = np.zeros(gages_size, dtype='float32')
+                for gage_i in range(gages_size):
+                    lastobs_values[gage_i] = lastobs_values_init[gage_i]
 
-        if gages_size and gage_maxtimestep > 0:
-            for gage_i in range(gages_size):
-                usgs_position_i = usgs_positions[gage_i]
-                # Handle the instance where there are no values, only gage positions
-                # TODO: Compare performance with math.isnan (imported for nogil...)
-                if not np.isnan(usgs_values[gage_i, 0]):
-                    flowveldepth_nd[usgs_position_i, 0, 0] = usgs_values[gage_i, 0]
+            if gages_size and gage_maxtimestep > 0:
+                for gage_i in range(gages_size):
+                    usgs_position_i = usgs_positions[gage_i]
+                    # Handle the instance where there are no values, only gage positions
+                    # TODO: Compare performance with math.isnan (imported for nogil...)
+                    if not np.isnan(usgs_values[gage_i, 0]):
+                        flowveldepth_nd[usgs_position_i, 0, 0] = usgs_values[gage_i, 0]
 
-        if gages_size:  # TODO: This loops over all gages for all reaches.
+            if gages_size:  # TODO: This loops over all gages for all reaches.
                         # We should have a membership test at the reach loop level
                         # so that we only enter this process for reaches where the
                         # gage actually exists. We have the filter in place to
@@ -1010,28 +1010,28 @@ cpdef object compute_network_structured_obj(
                         # particular network are present in the function call ---
                         # adding the reach-based filter would be the next level.
 
-            for gage_i in range(gages_size):
-                usgs_position_i = usgs_positions[gage_i] 
-                # TODO: It is possible to remove the following branching logic if
-                # we just loop over the timesteps during DA and post-DA, if that
-                # is a major performance optimization. On the flip side, it would
-                # probably introduce unwanted code complexity.
-                if (timestep < gage_maxtimestep and not isnan(usgs_values[gage_i,timestep-1])):
-                    flowveldepth[usgs_position_i, timestep, 0] = usgs_values[gage_i, timestep-1]
-                    # add/update lastobs_timestep
-                    lastobs_timestep[gage_i] = timestep - 1
-                    lastobs_values[gage_i] = usgs_values[gage_i, timestep-1]
-                else:
-                    a = 120  # TODO: pull this a value from the config file somehow
-                    if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                        da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
+                for gage_i in range(gages_size):
+                    usgs_position_i = usgs_positions[gage_i]
+                    # TODO: It is possible to remove the following branching logic if
+                    # we just loop over the timesteps during DA and post-DA, if that
+                    # is a major performance optimization. On the flip side, it would
+                    # probably introduce unwanted code complexity.
+                    if (timestep < gage_maxtimestep and not isnan(usgs_values[gage_i,timestep-1])):
+                        flowveldepth[usgs_position_i, timestep, 0] = usgs_values[gage_i, timestep-1]
+                        # add/update lastobs_timestep
+                        lastobs_timestep[gage_i] = timestep - 1
+                        lastobs_values[gage_i] = usgs_values[gage_i, timestep-1]
                     else:
-                        da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
+                        a = 120  # TODO: pull this a value from the config file somehow
+                        if lastobs_timestep[gage_i] < 0: # Initialized to -1
+                            da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
+                        else:
+                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
 
-                    # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
-                    flowveldepth[usgs_position_i, timestep, 0] = simple_da_with_decay(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
+                        # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
+                        flowveldepth[usgs_position_i, timestep, 0] = simple_da_with_decay(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
 
-      timestep += 1
+        timestep += 1
 
     #pr.disable()
     #pr.print_stats(sort='time')
@@ -1133,18 +1133,18 @@ cpdef object compute_network_structured(
         if (reach_type == 1):
             my_id = binary_find(data_idx, reach)
             #Reservoirs should be singleton list reaches, TODO enforce that here?
-            
+
             # write initial reservoir flows to flowveldepth array
             flowveldepth_nd[my_id, 0, 0] = wbody_parameters[wbody_index, 9] # TODO ref dataframe column label list, rather than hard-coded number
-            
+
             #Check if reservoir_type is not specified, then initialize default Level Pool reservoir
             if (not reservoir_type_specified):
-                
-                #Add level pool reservoir object to reach_objects
+
+                    #Add level pool reservoir object to reach_objects
                 reach_objects.append(
                     #tuple of MC_Reservoir, reach_type, and lp_reservoir
                       MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
-                                   array('l',upstream_ids), 
+                                   array('l',upstream_ids),
                                    wbody_parameters[wbody_index])
                     )
                 wbody_index += 1
@@ -1152,11 +1152,11 @@ cpdef object compute_network_structured(
             else:
                 #If reservoir_type is 1, then initialize Level Pool reservoir
                 if (reservoir_types[wbody_index][0] == 1):
-                    #Add level pool reservoir object to reach_objects
+                        #Add level pool reservoir object to reach_objects
                     reach_objects.append(
                         #tuple of MC_Reservoir, reach_type, and lp_reservoir
                           MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
-                                       array('l',upstream_ids), 
+                                       array('l',upstream_ids),
                                        wbody_parameters[wbody_index])
                         )
                     wbody_index += 1
@@ -1167,8 +1167,8 @@ cpdef object compute_network_structured(
                     #Add hybrid reservoir object to reach_objects
                     reach_objects.append(
                         #tuple of MC_Reservoir, reach_type, and hybrid_reservoir
-                          MC_Hybrid(my_id[0], lake_numbers_col[wbody_index], 
-                          array('l',upstream_ids), 
+                          MC_Hybrid(my_id[0], lake_numbers_col[wbody_index],
+                          array('l',upstream_ids),
                           wbody_parameters[wbody_index],
                           reservoir_types[wbody_index][0],
                           waterbody_parameters["hybrid_and_rfc"]["reservoir_parameter_file"],
@@ -1186,7 +1186,7 @@ cpdef object compute_network_structured(
                     #Add rfc reservoir object to reach_objects
                     reach_objects.append(
                         #tuple of MC_Reservoir, reach_type, and rfc_reservoir
-                          MC_RFC(my_id[0], lake_numbers_col[wbody_index], 
+                          MC_RFC(my_id[0], lake_numbers_col[wbody_index],
                           array('l',upstream_ids),
                           wbody_parameters[wbody_index],
                           reservoir_types[wbody_index][0],
@@ -1218,7 +1218,7 @@ cpdef object compute_network_structured(
                 #tuple of MC_Reach and reach_type
                 MC_Reach(segment_objects, array('l',upstream_ids))
                 )
-            
+
     # replace initial conditions with gage observations, wherever available
     cdef int gages_size = usgs_positions.shape[0]
     cdef int gage_maxtimestep = usgs_values.shape[1]
@@ -1239,7 +1239,7 @@ cpdef object compute_network_structured(
             # TODO: Compare performance with math.isnan (imported for nogil...)
             if not np.isnan(usgs_values[gage_i, 0]):
                 flowveldepth_nd[usgs_position_i, 0, 0] = usgs_values[gage_i, 0]
-    
+
     cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
     cdef Py_ssize_t fill_index
     cdef long upstream_tw_id
@@ -1270,7 +1270,7 @@ cpdef object compute_network_structured(
     cdef _Reach* reach_structs = <_Reach*>malloc(sizeof(_Reach)*num_reaches)
     #Populate the above array with the structs contained in each reach object
     for i in range(num_reaches):
-      reach_structs[i] = (<Reach>reach_objects[i])._reach
+        reach_structs[i] = (<Reach>reach_objects[i])._reach
 
     #reach iterator
     cdef _Reach* r
@@ -1280,102 +1280,102 @@ cpdef object compute_network_structured(
     cdef int id = 0
     #Run time
     with nogil:
-      while timestep < nsteps+1:
-        for i in range(num_reaches):
-              r = &reach_structs[i]
-              #Need to get quc and qup
-              upstream_flows = 0.0
-              previous_upstream_flows = 0.0
+        while timestep < nsteps+1:
+            for i in range(num_reaches):
+                r = &reach_structs[i]
+                #Need to get quc and qup
+                upstream_flows = 0.0
+                previous_upstream_flows = 0.0
 
-              for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead
-                id = r._upstream_ids[_i]
-                upstream_flows += flowveldepth[id, timestep, 0]
-                previous_upstream_flows += flowveldepth[id, timestep-1, 0]
+                for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead
+                    id = r._upstream_ids[_i]
+                    upstream_flows += flowveldepth[id, timestep, 0]
+                    previous_upstream_flows += flowveldepth[id, timestep-1, 0]
 
-              if assume_short_ts:
-                upstream_flows = previous_upstream_flows
+                if assume_short_ts:
+                    upstream_flows = previous_upstream_flows
 
-              if r.type == compute_type.RESERVOIR_LP:
-                run_lp_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
-                # TODO: Get rid of this insidious magic number (presumably the dt of 300 seconds...)
-                flowveldepth[r.id, timestep, 0] = reservoir_outflow
-                flowveldepth[r.id, timestep, 1] = 0.0
-                flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+                if r.type == compute_type.RESERVOIR_LP:
+                    run_lp_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                    # TODO: Get rid of this insidious magic number (presumably the dt of 300 seconds...)
+                    flowveldepth[r.id, timestep, 0] = reservoir_outflow
+                    flowveldepth[r.id, timestep, 1] = 0.0
+                    flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
-              elif r.type == compute_type.RESERVOIR_HYBRID:
-                run_hybrid_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
-                flowveldepth[r.id, timestep, 0] = reservoir_outflow
-                flowveldepth[r.id, timestep, 1] = 0.0
-                flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+                elif r.type == compute_type.RESERVOIR_HYBRID:
+                    run_hybrid_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                    flowveldepth[r.id, timestep, 0] = reservoir_outflow
+                    flowveldepth[r.id, timestep, 1] = 0.0
+                    flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
-              elif r.type == compute_type.RESERVOIR_RFC:
-                run_rfc_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
-                flowveldepth[r.id, timestep, 0] = reservoir_outflow
-                flowveldepth[r.id, timestep, 1] = 0.0
-                flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+                elif r.type == compute_type.RESERVOIR_RFC:
+                    run_rfc_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                    flowveldepth[r.id, timestep, 0] = reservoir_outflow
+                    flowveldepth[r.id, timestep, 1] = 0.0
+                    flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
-              else:
-                #Create compute reach kernel input buffer
-                for i in range(r.reach.mc_reach.num_segments):
-                  segment = get_mc_segment(r, i)#r._segments[i]
-                  buf_view[i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qts_subdivisions)]
-                  buf_view[i, 1] = segment.dt
-                  buf_view[i, 2] = segment.dx
-                  buf_view[i, 3] = segment.bw
-                  buf_view[i, 4] = segment.tw
-                  buf_view[i, 5] = segment.twcc
-                  buf_view[i, 6] = segment.n
-                  buf_view[i, 7] = segment.ncc
-                  buf_view[i, 8] = segment.cs
-                  buf_view[i, 9] = segment.s0
-                  buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]
-                  buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
-                  buf_view[i, 12] = flowveldepth[segment.id, timestep-1, 2]
-
-                compute_reach_kernel(previous_upstream_flows, upstream_flows,
-                                     r.reach.mc_reach.num_segments, buf_view,
-                                     out_buf,
-                                     assume_short_ts)
-
-                #Copy the output out
-                for i in range(r.reach.mc_reach.num_segments):
-                  segment = get_mc_segment(r, i)
-                  flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]
-                  flowveldepth[segment.id, timestep, 1] = out_buf[i, 1]
-                  flowveldepth[segment.id, timestep, 2] = out_buf[i, 2]
-                    
-        if gages_size:  # TODO: This loops over all gages for all reaches.
-                        # We should have a membership test at the reach loop level
-                        # so that we only enter this process for reaches where the
-                        # gage actually exists. We have the filter in place to
-                        # filter the gage list so that only relevant gages for a
-                        # particular network are present in the function call ---
-                        # adding the reach-based filter would be the next level.
-
-            for gage_i in range(gages_size):
-                usgs_position_i = usgs_positions[gage_i] 
-                # TODO: It is possible to remove the following branching logic if
-                # we just loop over the timesteps during DA and post-DA, if that
-                # is a major performance optimization. On the flip side, it would
-                # probably introduce unwanted code complexity.
-                if (timestep < gage_maxtimestep and not isnan(usgs_values[gage_i,timestep-1])):
-                    flowveldepth[usgs_position_i, timestep, 0] = usgs_values[gage_i, timestep-1]
-                    # add/update lastobs_timestep
-                    lastobs_timestep[gage_i] = timestep - 1
-                    lastobs_values[gage_i] = usgs_values[gage_i, timestep-1]
                 else:
-                    a = 120  # TODO: pull this a value from the config file somehow
-                    if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                        da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
+                    #Create compute reach kernel input buffer
+                    for i in range(r.reach.mc_reach.num_segments):
+                        segment = get_mc_segment(r, i)#r._segments[i]
+                        buf_view[i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qts_subdivisions)]
+                        buf_view[i, 1] = segment.dt
+                        buf_view[i, 2] = segment.dx
+                        buf_view[i, 3] = segment.bw
+                        buf_view[i, 4] = segment.tw
+                        buf_view[i, 5] = segment.twcc
+                        buf_view[i, 6] = segment.n
+                        buf_view[i, 7] = segment.ncc
+                        buf_view[i, 8] = segment.cs
+                        buf_view[i, 9] = segment.s0
+                        buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]
+                        buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
+                        buf_view[i, 12] = flowveldepth[segment.id, timestep-1, 2]
+
+                    compute_reach_kernel(previous_upstream_flows, upstream_flows,
+                                         r.reach.mc_reach.num_segments, buf_view,
+                                         out_buf,
+                                         assume_short_ts)
+
+                    #Copy the output out
+                    for i in range(r.reach.mc_reach.num_segments):
+                        segment = get_mc_segment(r, i)
+                        flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]
+                        flowveldepth[segment.id, timestep, 1] = out_buf[i, 1]
+                        flowveldepth[segment.id, timestep, 2] = out_buf[i, 2]
+
+            if gages_size:  # TODO: This loops over all gages for all reaches.
+                            # We should have a membership test at the reach loop level
+                            # so that we only enter this process for reaches where the
+                            # gage actually exists. We have the filter in place to
+                            # filter the gage list so that only relevant gages for a
+                            # particular network are present in the function call ---
+                            # adding the reach-based filter would be the next level.
+
+                for gage_i in range(gages_size):
+                    usgs_position_i = usgs_positions[gage_i]
+                    # TODO: It is possible to remove the following branching logic if
+                    # we just loop over the timesteps during DA and post-DA, if that
+                    # is a major performance optimization. On the flip side, it would
+                    # probably introduce unwanted code complexity.
+                    if (timestep < gage_maxtimestep and not isnan(usgs_values[gage_i,timestep-1])):
+                        flowveldepth[usgs_position_i, timestep, 0] = usgs_values[gage_i, timestep-1]
+                        # add/update lastobs_timestep
+                        lastobs_timestep[gage_i] = timestep - 1
+                        lastobs_values[gage_i] = usgs_values[gage_i, timestep-1]
                     else:
-                        da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
+                        a = 120  # TODO: pull this a value from the config file somehow
+                        if lastobs_timestep[gage_i] < 0: # Initialized to -1
+                            da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
+                        else:
+                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
 
-                    # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
-                    flowveldepth[usgs_position_i, timestep, 0] = simple_da_with_decay(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
+                        # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
+                        flowveldepth[usgs_position_i, timestep, 0] = simple_da_with_decay(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
 
-        # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
+            # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
 
-        timestep += 1
+            timestep += 1
     #pr.disable()
     #pr.print_stats(sort='time')
     #IMPORTANT, free the dynamic array created
