@@ -4,24 +4,24 @@
 /* Hybrid Reservoir Interface */
 extern void* get_hybrid_handle();
 
-extern void init_hybrid(void* handle, float *water_elevation, float *lake_area, float *weir_elevation,
-                    float *weir_coefficient, float *weir_length, float *dam_length, float *orifice_elevation,
-                    float *orifice_coefficient, float *orifice_area, float *max_depth, 
-                    float *initial_fractional_depth, int *lake_number, int *reservoir_type, 
+extern void init_hybrid(void* handle, double *water_elevation, double *lake_area, double *weir_elevation,
+                    double *weir_coefficient, double *weir_length, double *dam_length, double *orifice_elevation,
+                    double *orifice_coefficient, double *orifice_area, double *max_depth, 
+                    double *initial_fractional_depth, int *lake_number, int *reservoir_type, 
                     char *reservoir_parameter_file, char *start_date, char *usgs_timeslice_path, 
                     char *usace_timeslice_path, int *observation_lookback_hours,
                     int *observation_update_time_interval_seconds);
 
-extern void run_hybrid(void* handle, float *inflow, float *lateral_inflow,
-                    float *water_elevation, float *outflow, float *routing_period);
+extern void run_hybrid(void* handle, double *inflow, double *lateral_inflow,
+                    double *water_elevation, double *outflow, double *routing_period);
 
 extern void free_hybrid(void* handle);
 
 init_hybrid_reach(_Reach* reach, int lake_number,
-                          float dam_length, float area, float max_depth,
-                          float orifice_area, float orifice_coefficient, float orifice_elevation,
-                          float weir_coefficient, float weir_elevation, float weir_length,
-                          float initial_fractional_depth, float water_elevation,
+                          double dam_length, double area, double max_depth,
+                          double orifice_area, double orifice_coefficient, double orifice_elevation,
+                          double weir_coefficient, double weir_elevation, double weir_length,
+                          double initial_fractional_depth, double water_elevation,
                           int reservoir_type, char *reservoir_parameter_file_ptr, char *start_date_ptr,
                           char *usgs_timeslice_path_ptr, char *usace_timeslice_path_ptr, 
                           int observation_lookback_hours,
@@ -88,8 +88,8 @@ void free_hybrid_reach(_Reach* reach)
   free(reach->reach.hybrid.usace_timeslice_path);
 }
 
-void route(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
-           float* outflow,  float* water_elevation)
+void route(_Reach* reach, double inflow, double lateral_inflow, double routing_period,
+           double* outflow,  double* water_elevation)
 {
   run_hybrid(reach->reach.hybrid.handle, &inflow, &lateral_inflow, &reach->reach.hybrid.water_elevation, outflow, &routing_period);
   *water_elevation = reach->reach.hybrid.water_elevation;

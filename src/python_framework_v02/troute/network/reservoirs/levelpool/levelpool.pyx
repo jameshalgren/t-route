@@ -9,16 +9,16 @@ Externally defined symbols
 
 cdef extern from "levelpool_structs.c":
   void init_levelpool_reach(_Reach* reach, int lake_number,
-                            float dam_length, float area, float max_depth,
-                            float orifice_area, float orifice_coefficient, float orifice_elevation,
-                            float weir_coefficient, float weir_elevation, float weir_length,
-                            float initial_fractional_depth, float water_elevation
+                            double dam_length, double area, double max_depth,
+                            double orifice_area, double orifice_coefficient, double orifice_elevation,
+                            double weir_coefficient, double weir_elevation, double weir_length,
+                            double initial_fractional_depth, double water_elevation
   )
   void free_levelpool_reach(_Reach* reach)
 
-  void route(_Reach* reach, float routing_period, float inflow, float lateral_inflow, float* outflow,  float* water_elevation) nogil
+  void route(_Reach* reach, double routing_period, double inflow, double lateral_inflow, double* outflow,  double* water_elevation) nogil
 
-cdef void run_lp_c(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow,  float* water_elevation) nogil:
+cdef void run_lp_c(_Reach* reach, double inflow, double lateral_inflow, double routing_period, double* outflow,  double* water_elevation) nogil:
     route(reach, inflow, lateral_inflow, routing_period, outflow, water_elevation)
 
 cdef class MC_Levelpool(Reach):
@@ -82,26 +82,26 @@ cdef class MC_Levelpool(Reach):
     """
     free_levelpool_reach(&self._reach)
 
-  cpdef (float,float) run(self, float inflow, float lateral_inflow, float routing_period):
+  cpdef (double,double) run(self, double inflow, double lateral_inflow, double routing_period):
     """
       Run the levelpool routing function
 
       Params:
-        inflow: float
+        inflow: double
           inflow into the reservoir
-        lateral_inflow: float
+        lateral_inflow: double
           lateral flows into the reservoir
-        routing_period: float
+        routing_period: double
           amount of time to simulatie reservoir operation for, outflow if valid until this time
 
       Return:
-        outflow: float
+        outflow: double
           flow rate out of the reservoir valid for routing_period seconds
         water_elevation:
           reservoir water surface elevation after routing_period seconds
     """
-    cdef float outflow = 0.0
-    cdef float water_elevation = 0.0
+    cdef double outflow = 0.0
+    cdef double water_elevation = 0.0
     with nogil:
       route(&self._reach, inflow, lateral_inflow, routing_period, &outflow, &water_elevation)
       #printf("outflow: %f\n", outflow)

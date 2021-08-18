@@ -8,6 +8,6 @@ def writetoFile(file, writeString):
 
 
 def constant_qlats(index_dataset, nsteps, qlat):
-    q = np.full((len(index_dataset.index), nsteps), qlat, dtype="float32")
+    q = np.full((len(index_dataset.index), nsteps), qlat, dtype="float64")
     ql = pd.DataFrame(q, index=index_dataset.index, columns=range(nsteps))
     return ql

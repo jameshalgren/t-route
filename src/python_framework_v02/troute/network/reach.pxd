@@ -5,16 +5,16 @@ FIXME add some significant inline documentation
 cdef extern from "reach_structs.h":
   ctypedef struct _MC_Levelpool:
     int lake_number
-    float dam_length, area, max_depth;
-    float orifice_area, orifice_coefficient, orifice_elevation;
-    float weir_coefficient, weir_elevation, weir_length;
-    float initial_fractional_depth, water_elevation;
+    double dam_length, area, max_depth;
+    double orifice_area, orifice_coefficient, orifice_elevation;
+    double weir_coefficient, weir_elevation, weir_length;
+    double initial_fractional_depth, water_elevation;
   ctypedef struct _MC_Hybrid:
     int lake_number
-    float dam_length, area, max_depth;
-    float orifice_area, orifice_coefficient, orifice_elevation;
-    float weir_coefficient, weir_elevation, weir_length;
-    float initial_fractional_depth, water_elevation;
+    double dam_length, area, max_depth;
+    double orifice_area, orifice_coefficient, orifice_elevation;
+    double weir_coefficient, weir_elevation, weir_length;
+    double initial_fractional_depth, water_elevation;
     int reservoir_type;
     char[256] reservoir_parameter_file;
     char[19] start_date;
@@ -24,10 +24,10 @@ cdef extern from "reach_structs.h":
     int observation_update_time_interval_seconds;
   ctypedef struct _MC_RFC:
     int lake_number
-    float dam_length, area, max_depth;
-    float orifice_area, orifice_coefficient, orifice_elevation;
-    float weir_coefficient, weir_elevation, weir_length;
-    float initial_fractional_depth, water_elevation;
+    double dam_length, area, max_depth;
+    double orifice_area, orifice_coefficient, orifice_elevation;
+    double weir_coefficient, weir_elevation, weir_length;
+    double initial_fractional_depth, water_elevation;
     int reservoir_type;
     char[256] reservoir_parameter_file;
     char[19] start_date;

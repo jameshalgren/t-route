@@ -33,5 +33,5 @@ def read_catchment_lateral_flows(path):
     qlats.index = qlats.index.astype(int)
     qlats.columns = qlats.columns.astype(int)
     qlats = qlats.sort_index(axis='index')
-    return qlats.astype('float32')
+    return qlats.astype('float64')
 

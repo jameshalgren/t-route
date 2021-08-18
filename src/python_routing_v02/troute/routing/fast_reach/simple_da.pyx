@@ -2,11 +2,11 @@ from libc.math cimport exp, isnan
 # from libc.stdio cimport printf
 
 
-cpdef float simple_da_with_decay_py(
-    const float last_valid_obs,
-    const float model_val,
-    const float minutes_since_last_valid,
-    const float decay_coeff,
+cpdef double simple_da_with_decay_py(
+    const double last_valid_obs,
+    const double model_val,
+    const double minutes_since_last_valid,
+    const double decay_coeff,
 ):
     """
     pass-through for using pytest with `simple_da_with_decay`
@@ -19,11 +19,11 @@ cpdef float simple_da_with_decay_py(
     )
 
 
-cdef float simple_da_with_decay(
-    const float last_valid_obs,
-    const float model_val,
-    const float minutes_since_last_valid,
-    const float decay_coeff,
+cdef double simple_da_with_decay(
+    const double last_valid_obs,
+    const double model_val,
+    const double minutes_since_last_valid,
+    const double decay_coeff,
 ) nogil:
     """
     pass-through for computing final value instead of just 'nudge'.
@@ -36,11 +36,11 @@ cdef float simple_da_with_decay(
     )
 
 
-cdef float obs_persist_shift(
-    const float last_valid_obs,
-    const float model_val,
-    const float minutes_since_last_valid,
-    const float decay_coeff,
+cdef double obs_persist_shift(
+    const double last_valid_obs,
+    const double model_val,
+    const double minutes_since_last_valid,
+    const double decay_coeff,
 ) nogil:
     """
     Given a modeled value, last valid observation,
@@ -48,7 +48,7 @@ cdef float obs_persist_shift(
     decay_coefficient, compute the 'nudge' value
     """
 
-    cdef float da_weight, da_shift, da_weighted_shift
+    cdef double da_weight, da_shift, da_weighted_shift
     da_weight = exp(minutes_since_last_valid/-decay_coeff)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
     # TODO: we need to be able to export these values to compute the 'Nudge'
     # One possibility would be to return only the nudge from this function...

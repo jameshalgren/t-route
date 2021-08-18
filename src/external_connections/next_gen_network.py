@@ -134,11 +134,11 @@ def main():
     # initial conditions, assume to be zero
     # TO DO: Allow optional reading of initial conditions from WRF
     q0 = pd.DataFrame(
-        0, index=waterbody_df.index, columns=["qu0", "qd0", "h0"], dtype="float32"
+        0, index=waterbody_df.index, columns=["qu0", "qd0", "h0"], dtype="float64"
     )
 
-    #Set types as float32
-    waterbody_df = waterbody_df.astype({"dt": "float32", "bw": "float32", "tw": "float32", "twcc": "float32", "dx": "float32", "n": "float32", "ncc": "float32", "cs": "float32", "s0": "float32"})
+    #Set types as float64
+    waterbody_df = waterbody_df.astype({"dt": "float64", "bw": "float64", "tw": "float64", "twcc": "float64", "dx": "float64", "n": "float64", "ncc": "float64", "cs": "float64", "s0": "float64"})
     
     subreaches = {}
 

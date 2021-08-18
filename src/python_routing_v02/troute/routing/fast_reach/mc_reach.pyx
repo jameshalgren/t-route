@@ -64,7 +64,7 @@ cpdef object binary_find(object arr, object els):
 
 
 @cython.boundscheck(False)
-cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts, bint return_courant=False) nogil:
+cdef void compute_reach_kernel(double qup, double quc, int nreach, const double[:,:] input_buf, double[:, :] output_buf, bint assume_short_ts, bint return_courant=False) nogil:
     """
     Kernel to compute reach.
     Input buffer is array matching following description:
@@ -81,7 +81,7 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
     cdef reach.QVD *out = &rv
 
     cdef:
-        float dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
+        double dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
         int i
 
     for i in range(nreach):
@@ -138,7 +138,7 @@ cdef void fill_buffer_column(const Py_ssize_t[:] srows,
     const Py_ssize_t scol,
     const Py_ssize_t[:] drows,
     const Py_ssize_t dcol,
-    const float[:, :] src, float[:, ::1] out) nogil except *:
+    const double[:, :] src, double[:, ::1] out) nogil except *:
 
     cdef Py_ssize_t i
     for i in range(srows.shape[0]):
@@ -161,27 +161,27 @@ cpdef object column_mapper(object src_cols):
 
 cpdef object compute_network(
     const int nsteps,
-    const float dt,
+    const double dt,
     const int qts_subdivisions,
     list reaches_wTypes, # a list of tuples
     dict upstream_connections,
     const long[:] data_idx,
     object[:] data_cols,
-    const float[:,:] data_values,
-    const float[:,:] initial_conditions,
-    const float[:,:] qlat_values,
+    const double[:,:] data_values,
+    const double[:,:] initial_conditions,
+    const double[:,:] qlat_values,
     list lake_numbers_col,
     const double[:,:] wbody_cols,
     dict waterbody_parameters,
     const int[:,:] reservoir_types,
     bint reservoir_type_specified,
     str model_start_time,
-    const float[:,:] usgs_values,
+    const double[:,:] usgs_values,
     const int[:] usgs_positions,
     const int[:] usgs_positions_reach,
     const int[:] usgs_positions_gage,
-    const float[:] lastobs_values_init,
-    const float[:] time_since_lastobs_init,
+    const double[:] lastobs_values_init,
+    const double[:] time_since_lastobs_init,
     const double da_decay_coefficient,
     dict upstream_results={},
     bint assume_short_ts=False,
@@ -212,16 +212,16 @@ cpdef object compute_network(
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
 
-    # flowveldepth is 2D float array that holds results
+    # flowveldepth is 2D double array that holds results
     # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
     # rows: indexed by data_idx
     cdef int qvd_ts_w = 3  # There are 3 values per timestep (corresponding to 3 columns per timestep)
-    cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], (nsteps + 1) * qvd_ts_w), dtype='float32')
+    cdef double[:,::1] flowveldepth = np.zeros((data_idx.shape[0], (nsteps + 1) * qvd_ts_w), dtype='float64')
 
-    # courant is a 2D float array that holds courant results
+    # courant is a 2D double array that holds courant results
     # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
     # rows: indexed by data_idx
-    cdef float[:,::1] courant = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+    cdef double[:,::1] courant = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float64')
 
     flowveldepth[:,0] = initial_conditions[:,1]  # Populate initial flows
     flowveldepth[:,2] = initial_conditions[:,2]  # Populate initial depths
@@ -229,15 +229,15 @@ cpdef object compute_network(
     cdef int gages_size = usgs_positions.shape[0]
     cdef int gage_i, usgs_position_i
     cdef int gage_maxtimestep = usgs_values.shape[1]
-    cdef float a, da_decay_minutes, da_weight, da_shift, da_weighted_shift, replacement_value
+    cdef double a, da_decay_minutes, da_weight, da_shift, da_weighted_shift, replacement_value
     cdef int [:] lastobs_timestep
-    cdef float [:] lastobs_values
+    cdef double [:] lastobs_values
     cdef int[:] reach_has_gage
     reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
 
     if gages_size:
         lastobs_timestep = np.full(gages_size, -1, dtype='int32')
-        lastobs_values = np.zeros(gages_size, dtype='float32')
+        lastobs_values = np.zeros(gages_size, dtype='float64')
         for gage_i in range(gages_size):
             lastobs_values[gage_i] = lastobs_values_init[gage_i]
             reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
@@ -262,7 +262,7 @@ cpdef object compute_network(
     cdef long upstream_tw_id
     cdef dict tmp
     cdef int idx
-    cdef float val
+    cdef double val
 
     for upstream_tw_id in upstream_results:
         tmp = upstream_results[upstream_tw_id]
@@ -277,8 +277,8 @@ cpdef object compute_network(
 
     # Buffers and buffer views
     # These are C-contiguous.
-    cdef float[:, ::1] buf, buf_view
-    cdef float[:, ::1] out_buf, out_view
+    cdef double[:, ::1] buf, buf_view
+    cdef double[:, ::1] out_buf, out_view
 
     # Source columns
     cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
@@ -343,17 +343,17 @@ cpdef object compute_network(
                 iusreach_cache += 1
 
     cdef int maxreachlen = max(reach_sizes)
-    buf = np.empty((maxreachlen, buf_cols), dtype='float32')
+    buf = np.empty((maxreachlen, buf_cols), dtype='float64')
 
     if return_courant:
-        out_buf = np.empty((maxreachlen, qvd_ts_w + 3), dtype='float32')
+        out_buf = np.empty((maxreachlen, qvd_ts_w + 3), dtype='float64')
     else:
-        out_buf = np.empty((maxreachlen, qvd_ts_w), dtype='float32')
+        out_buf = np.empty((maxreachlen, qvd_ts_w), dtype='float64')
 
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
-    cdef float qup, quc
-    # cdef float dt = 300.0  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
+    cdef double qup, quc
+    # cdef double dt = 300.0  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
     cdef int timestep = 0
     cdef int ts_offset
 
@@ -481,16 +481,16 @@ cpdef object compute_network(
     # The upstream keys have empty results because they are not part of any reaches
     # so we need to delete the null values that return
     if return_courant:
-        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float32')[fill_index_mask], np.asarray(courant, dtype='float32')[fill_index_mask]
+        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float64')[fill_index_mask], np.asarray(courant, dtype='float64')[fill_index_mask]
     else:
-        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float32')[fill_index_mask]
+        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float64')[fill_index_mask]
 
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
 cpdef object compute_network_multithread(int nsteps, list reaches, dict connections,
-    const long[:] data_idx, object[:] data_cols, const float[:,:] data_values,
-    const float[:, :] qlat_values, const float[:,:] initial_conditions,
+    const long[:] data_idx, object[:] data_cols, const double[:,:] data_values,
+    const double[:, :] qlat_values, const double[:,:] initial_conditions,
     const int[:] reach_groups,
     const int[:] reach_group_cache_sizes,
     bint assume_short_ts=False):
@@ -516,7 +516,7 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
 
-    cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+    cdef double[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float64')
 
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
@@ -527,11 +527,11 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
 
     # Buffers and buffer views
     # These are C-contiguous.
-    cdef float[:, ::1] buf, buf_view
-    cdef float[:, ::1] out_buf, out_view
+    cdef double[:, ::1] buf, buf_view
+    cdef double[:, ::1] out_buf, out_view
     cdef int maxgrouplen = max(reach_group_cache_sizes)
-    buf = np.empty((maxgrouplen, buf_cols), dtype='float32')
-    out_buf = np.empty((maxgrouplen, 3), dtype='float32')
+    buf = np.empty((maxgrouplen, buf_cols), dtype='float64')
+    out_buf = np.empty((maxgrouplen, 3), dtype='float64')
 
     # Source columns
     cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
@@ -609,10 +609,10 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
     cdef int ts_offset
 
     cdef int maxgroupsize = max(reach_groups)
-    cdef float[:] qu_buf = np.empty(maxgroupsize, dtype = "float32")
-    cdef float[:] quc_view
-    cdef float[:] qup_view
-    cdef float quc, qup
+    cdef double[:] qu_buf = np.empty(maxgroupsize, dtype = "float64")
+    cdef double[:] quc_view
+    cdef double[:] qup_view
+    cdef double quc, qup
     cdef int qu_idx
     cdef int buf_idx
     cdef Py_ssize_t[:] srowsgroup_buf = np.empty(maxgrouplen, dtype = np.intp)
@@ -740,31 +740,31 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
 
             timestep += 1
 
-    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
+    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float64')
 
 cpdef object compute_network_structured_obj(
     int nsteps,
-    float dt,
+    double dt,
     int qts_subdivisions,
     list reaches_wTypes, # a list of tuples
     dict upstream_connections,
     const long[:] data_idx,
     object[:] data_cols,
-    const float[:,:] data_values,
-    const float[:,:] initial_conditions,
-    const float[:,:] qlat_values,
+    const double[:,:] data_values,
+    const double[:,:] initial_conditions,
+    const double[:,:] qlat_values,
     list lake_numbers_col,
     const double[:,:] wbody_cols,
     dict waterbody_parameters,
     const int[:,:] reservoir_types,
     bint reservoir_type_specified,
     str model_start_time,
-    const float[:,:] usgs_values,
+    const double[:,:] usgs_values,
     const int[:] usgs_positions,
     const int[:] usgs_positions_reach,
     const int[:] usgs_positions_gage,
-    const float[:] lastobs_values_init,
-    const float[:] time_since_lastobs_init,
+    const double[:] lastobs_values_init,
+    const double[:] time_since_lastobs_init,
     const double da_decay_coefficient,
     dict upstream_results={},
     bint assume_short_ts=False,
@@ -795,11 +795,11 @@ cpdef object compute_network_structured_obj(
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
     #define and initialize the final output array +1 timestep for initial conditions
-    cdef np.ndarray[float, ndim=3] flowveldepth = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float32')
+    cdef np.ndarray[double, ndim=3] flowveldepth = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float64')
     #Make ndarrays from the mem views for convience of indexing...may be a better method
-    cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
-    cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
-    cdef np.ndarray[float, ndim=2] qlat_array = np.asarray(qlat_values)
+    cdef np.ndarray[double, ndim=2] data_array = np.asarray(data_values)
+    cdef np.ndarray[double, ndim=2] init_array = np.asarray(initial_conditions)
+    cdef np.ndarray[double, ndim=2] qlat_array = np.asarray(qlat_values)
     cdef np.ndarray[double, ndim=2] wbody_parameters = np.asarray(wbody_cols)
     ###### Declare/type variables #####
     # Source columns
@@ -812,13 +812,13 @@ cpdef object compute_network_structured_obj(
     cdef list segment_ids
     cdef list upstream_ids
     #flow accumulation variables
-    cdef float upstream_flows, previous_upstream_flows
+    cdef double upstream_flows, previous_upstream_flows
     #starting timestep, shifted by 1 to account for initial conditions
     cdef int timestep = 1
     #buffers to pass to compute_reach_kernel
-    cdef float[:,:] buf_view
-    cdef float[:,:] out_buf
-    cdef float[:] lateral_flows
+    cdef double[:,:] buf_view
+    cdef double[:,:] out_buf
+    cdef double[:] lateral_flows
     # list of reach objects to operate on
     cdef list reach_objects = []
     cdef list segment_objects
@@ -832,15 +832,15 @@ cpdef object compute_network_structured_obj(
     cdef int gages_size = usgs_positions.shape[0]
     cdef int gage_maxtimestep = usgs_values.shape[1]
     cdef int gage_i, usgs_position_i
-    cdef float a, da_decay_minutes, da_weight, da_shift, da_weighted_shift, replacement_value
+    cdef double a, da_decay_minutes, da_weight, da_shift, da_weighted_shift, replacement_value
     cdef int [:] lastobs_timestep
-    cdef float [:] lastobs_values
+    cdef double [:] lastobs_values
     cdef int[:] reach_has_gage
     reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
 
     if gages_size:
         lastobs_timestep = np.full(gages_size, -1, dtype='int32')
-        lastobs_values = np.zeros(gages_size, dtype='float32')
+        lastobs_values = np.zeros(gages_size, dtype='float64')
         for gage_i in range(gages_size):
             lastobs_values[gage_i] = lastobs_values_init[gage_i]
             reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
@@ -953,9 +953,9 @@ cpdef object compute_network_structured_obj(
 
 
     #Init buffers
-    lateral_flows = np.zeros( max_buff_size, dtype='float32' )
-    buf_view = np.zeros( (max_buff_size, 13), dtype='float32')
-    out_buf = np.full( (max_buff_size, 3), -1, dtype='float32')
+    lateral_flows = np.zeros( max_buff_size, dtype='float64' )
+    buf_view = np.zeros( (max_buff_size, 13), dtype='float64')
+    out_buf = np.full( (max_buff_size, 3), -1, dtype='float64')
 
     #Run time
     while timestep < nsteps+1:
@@ -1049,33 +1049,33 @@ cpdef object compute_network_structured_obj(
     #pr.disable()
     #pr.print_stats(sort='time')
     #slice off the initial condition timestep and return
-    output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
+    output = np.asarray(flowveldepth[:,1:,:], dtype='float64')
     return np.asarray(data_idx, dtype=np.intp), output.reshape(output.shape[0], -1)
 
 
 cpdef object compute_network_structured(
     int nsteps,
-    float dt,
+    double dt,
     int qts_subdivisions,
     list reaches_wTypes, # a list of tuples
     dict upstream_connections,
     const long[:] data_idx,
     object[:] data_cols,
-    const float[:,:] data_values,
-    const float[:,:] initial_conditions,
-    const float[:,:] qlat_values,
+    const double[:,:] data_values,
+    const double[:,:] initial_conditions,
+    const double[:,:] qlat_values,
     list lake_numbers_col,
     const double[:,:] wbody_cols,
     dict waterbody_parameters,
     const int[:,:] reservoir_types,
     bint reservoir_type_specified,
     str model_start_time,
-    const float[:,:] usgs_values,
+    const double[:,:] usgs_values,
     const int[:] usgs_positions,
     const int[:] usgs_positions_reach,
     const int[:] usgs_positions_gage,
-    const float[:] lastobs_values_init,
-    const float[:] time_since_lastobs_init,
+    const double[:] lastobs_values_init,
+    const double[:] time_since_lastobs_init,
     const double da_decay_coefficient,
     dict upstream_results={},
     bint assume_short_ts=False,
@@ -1108,11 +1108,11 @@ cpdef object compute_network_structured(
         raise ValueError(f"data_values shape mismatch")
     #define and initialize the final output array, add one extra time step for initial conditions
     cdef int qvd_ts_w = 3  # There are 3 values per timestep (corresponding to 3 columns per timestep)
-    cdef np.ndarray[float, ndim=3] flowveldepth_nd = np.zeros((data_idx.shape[0], nsteps+1, qvd_ts_w), dtype='float32')
+    cdef np.ndarray[double, ndim=3] flowveldepth_nd = np.zeros((data_idx.shape[0], nsteps+1, qvd_ts_w), dtype='float64')
     #Make ndarrays from the mem views for convience of indexing...may be a better method
-    cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
-    cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
-    cdef np.ndarray[float, ndim=2] qlat_array = np.asarray(qlat_values)
+    cdef np.ndarray[double, ndim=2] data_array = np.asarray(data_values)
+    cdef np.ndarray[double, ndim=2] init_array = np.asarray(initial_conditions)
+    cdef np.ndarray[double, ndim=2] qlat_array = np.asarray(qlat_values)
     cdef np.ndarray[double, ndim=2] wbody_parameters = np.asarray(wbody_cols)
     ###### Declare/type variables #####
     # Source columns
@@ -1125,13 +1125,13 @@ cpdef object compute_network_structured(
     cdef list segment_ids
     cdef list upstream_ids
     #flow accumulation variables
-    cdef float upstream_flows, previous_upstream_flows
+    cdef double upstream_flows, previous_upstream_flows
     #starting timestep, shifted by 1 to account for initial conditions
     cdef int timestep = 1
     #buffers to pass to compute_reach_kernel
-    cdef float[:,:] buf_view
-    cdef float[:,:] out_buf
-    cdef float[:] lateral_flows
+    cdef double[:,:] buf_view
+    cdef double[:,:] out_buf
+    cdef double[:] lateral_flows
     # list of reach objects to operate on
     cdef list reach_objects = []
     cdef list segment_objects
@@ -1240,15 +1240,15 @@ cpdef object compute_network_structured(
     cdef int gages_size = usgs_positions.shape[0]
     cdef int gage_maxtimestep = usgs_values.shape[1]
     cdef int gage_i, usgs_position_i
-    cdef float a, da_decay_minutes, da_weighted_shift, replacement_val  # , original_val, lastobs_val,
+    cdef double a, da_decay_minutes, da_weighted_shift, replacement_val  # , original_val, lastobs_val,
     cdef int [:] lastobs_timestep
-    cdef float [:] lastobs_values
+    cdef double [:] lastobs_values
     cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
-    cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
+    cdef double[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float64")
 
     if gages_size:
         lastobs_timestep = np.full(gages_size, -1, dtype="int32")
-        lastobs_values = np.zeros(gages_size, dtype="float32")
+        lastobs_values = np.zeros(gages_size, dtype="float64")
         # if da_check_gage > 0:
         #     print(f"gage_i     usgs_positions[gage_i]  usgs_positions_reach[gage_i]  usgs_positions_gage[gage_i]   list(usgs_positions)")
         for gage_i in range(gages_size):
@@ -1270,7 +1270,7 @@ cpdef object compute_network_structured(
     cdef long upstream_tw_id
     cdef dict tmp
     cdef int idx
-    cdef float val
+    cdef double val
 
     for upstream_tw_id in upstream_results:
         tmp = upstream_results[upstream_tw_id]
@@ -1286,9 +1286,9 @@ cpdef object compute_network_structured(
                 flowveldepth_nd[fill_index, 0, 2] = init_array[fill_index, 2] # initial depth condition
 
     #Init buffers
-    lateral_flows = np.zeros( max_buff_size, dtype='float32' )
-    buf_view = np.zeros( (max_buff_size, 13), dtype='float32')
-    out_buf = np.full( (max_buff_size, 3), -1, dtype='float32')
+    lateral_flows = np.zeros( max_buff_size, dtype='float64' )
+    buf_view = np.zeros( (max_buff_size, 13), dtype='float64')
+    out_buf = np.full( (max_buff_size, 3), -1, dtype='float64')
 
     cdef int num_reaches = len(reach_objects)
     #Dynamically allocate a C array of reach structs
@@ -1300,8 +1300,8 @@ cpdef object compute_network_structured(
     #reach iterator
     cdef _Reach* r
     #create a memory view of the ndarray
-    cdef float[:,:,::1] flowveldepth = flowveldepth_nd
-    cdef float reservoir_outflow, reservoir_water_elevation
+    cdef double[:,:,::1] flowveldepth = flowveldepth_nd
+    cdef double reservoir_outflow, reservoir_water_elevation
     cdef int id = 0
     #Run time
     with nogil:
@@ -1443,6 +1443,6 @@ cpdef object compute_network_structured(
     #IMPORTANT, free the dynamic array created
     free(reach_structs)
     #slice off the initial condition timestep and return
-    output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
-    #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
+    output = np.asarray(flowveldepth[:,1:,:], dtype='float64')
+    #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float64')
     return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask]

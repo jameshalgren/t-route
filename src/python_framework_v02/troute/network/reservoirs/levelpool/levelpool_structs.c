@@ -4,20 +4,20 @@
 /* Level Pool Reservoir Interface */
 extern void* get_lp_handle();
 
-extern void init_lp(void* handle, float *water_elevation, float *lake_area, float *weir_elevation,
-                    float *weir_coefficient, float *weir_length, float *dam_length, float *orifice_elevation,
-                    float *orifice_coefficient, float *orifice_area, float *max_depth, int *lake_number);
+extern void init_lp(void* handle, double *water_elevation, double *lake_area, double *weir_elevation,
+                    double *weir_coefficient, double *weir_length, double *dam_length, double *orifice_elevation,
+                    double *orifice_coefficient, double *orifice_area, double *max_depth, int *lake_number);
 
-extern void run_lp(void* handle, float *inflow, float *lateral_inflow,
-                    float *water_elevation, float *outflow, float *routing_period);
+extern void run_lp(void* handle, double *inflow, double *lateral_inflow,
+                    double *water_elevation, double *outflow, double *routing_period);
 
 extern void free_lp(void* handle);
 
 init_levelpool_reach(_Reach* reach, int lake_number,
-                          float dam_length, float area, float max_depth,
-                          float orifice_area, float orifice_coefficient, float orifice_elevation,
-                          float weir_coefficient, float weir_elevation, float weir_length,
-                          float initial_fractional_depth, float water_elevation
+                          double dam_length, double area, double max_depth,
+                          double orifice_area, double orifice_coefficient, double orifice_elevation,
+                          double weir_coefficient, double weir_elevation, double weir_length,
+                          double initial_fractional_depth, double water_elevation
 )
 {
   if( reach != NULL )
@@ -57,8 +57,8 @@ void free_levelpool_reach(_Reach* reach)
   free_lp(reach->reach.lp.handle);
 }
 
-void route(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
-           float* outflow, float* water_elevation)
+void route(_Reach* reach, double inflow, double lateral_inflow, double routing_period,
+           double* outflow, double* water_elevation)
 {
   run_lp(reach->reach.lp.handle, &inflow, &lateral_inflow, &reach->reach.lp.water_elevation, outflow, &routing_period);
   *water_elevation = reach->reach.lp.water_elevation;

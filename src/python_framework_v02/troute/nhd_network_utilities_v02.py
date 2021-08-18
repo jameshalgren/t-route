@@ -455,7 +455,7 @@ def build_connections(supernetwork_parameters):
     )
     param_df = param_df.drop("downstream", axis=1)
 
-    param_df = param_df.astype("float32")
+    param_df = param_df.astype("float64")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     return connections, param_df, wbodies, gages
@@ -535,9 +535,9 @@ def build_channel_initial_state(
     else:
         # Set cold initial state
         # assume to be zero
-        # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
+        # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float64"
         q0 = pd.DataFrame(
-            0, index=segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
+            0, index=segment_index, columns=["qu0", "qd0", "h0"], dtype="float64",
         )
     # TODO: If needed for performance improvement consider filtering mask file on read.
     if not segment_index.empty:
@@ -588,7 +588,7 @@ def build_qlateral_array(
     #    df_length = len(qlat_df.columns)
     #    for x in range(df_length, 144):
     #        qlat_df[str(x)] = 0
-    #        qlat_df = qlat_df.astype("float32")
+    #        qlat_df = qlat_df.astype("float64")
 
     elif qlat_input_file:
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
@@ -599,7 +599,7 @@ def build_qlateral_array(
             qlat_const,
             index=segment_index,
             columns=range(nts // qts_subdivisions),
-            dtype="float32",
+            dtype="float64",
         )
 
     # TODO: Make a more sophisticated date-based filter

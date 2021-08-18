@@ -4,24 +4,24 @@ from fortran_wrappers cimport c_levelpool_physics
 
 
 @cython.boundscheck(False)
-cdef void levelpool_physics(float dt,
-        float qi0,
-        float qi1,
-        float ql,
-        float ar,
-        float we,
-        float maxh,
-        float wc,
-        float wl,
-        float dl,
-        float oe,
-        float oc,
-        float oa,
-        float H0,
+cdef void levelpool_physics(double dt,
+        double qi0,
+        double qi1,
+        double ql,
+        double ar,
+        double we,
+        double maxh,
+        double wc,
+        double wl,
+        double dl,
+        double oe,
+        double oc,
+        double oa,
+        double H0,
         QH *rv) nogil:
     cdef:
-        float H1 = 0.0
-        float qo1 = 0.0
+        double H1 = 0.0
+        double qo1 = 0.0
 
     c_levelpool_physics(
         &dt,
@@ -44,20 +44,20 @@ cdef void levelpool_physics(float dt,
     rv.resoutflow = qo1
 
 
-cpdef dict compute_reservoir_kernel(float dt,
-        float qi0,
-        float qi1,
-        float ql,
-        float ar,
-        float we,
-        float maxh,
-        float wc,
-        float wl,
-        float dl,
-        float oe,
-        float oc,
-        float oa,
-        float H0):
+cpdef dict compute_reservoir_kernel(double dt,
+        double qi0,
+        double qi1,
+        double ql,
+        double ar,
+        double we,
+        double maxh,
+        double wc,
+        double wl,
+        double dl,
+        double oe,
+        double oc,
+        double oa,
+        double H0):
 
     cdef QH rv
     cdef QH *out = &rv
@@ -95,10 +95,10 @@ cpdef long output_buffer_cols() nogil:
 
 
 @cython.boundscheck(False)
-cpdef float[:,:] compute_reservoir(const float[:] boundary,
-                                    const float[:,:] previous_state,
-                                    const float[:,:] parameter_inputs,
-                                    float[:,:] output_buffer,
+cpdef double[:,:] compute_reservoir(const double[:] boundary,
+                                    const double[:,:] previous_state,
+                                    const double[:,:] parameter_inputs,
+                                    double[:,:] output_buffer,
                                     Py_ssize_t size=0) nogil:
     """
     Compute a reservoir
@@ -114,7 +114,7 @@ cpdef float[:,:] compute_reservoir(const float[:] boundary,
     cdef QH *out = &rv
 
     cdef:
-        float dt, ql, ar, we, maxh, wc, wl, dl, oe, oc, oa, H0
+        double dt, ql, ar, we, maxh, wc, wl, dl, oe, oc, oa, H0
         Py_ssize_t i, rows
 
     # check that previous state, parameter_inputs and output_buffer all have same axis 0
@@ -137,8 +137,8 @@ cpdef float[:,:] compute_reservoir(const float[:] boundary,
     if output_buffer.shape[1] < 2:
         raise IndexError
 
-    cdef float qi0 = boundary[0]
-    cdef float qi1 = boundary[1]
+    cdef double qi0 = boundary[0]
+    cdef double qi1 = boundary[1]
 
     for i in range(rows):
         dt = parameter_inputs[i, 0]

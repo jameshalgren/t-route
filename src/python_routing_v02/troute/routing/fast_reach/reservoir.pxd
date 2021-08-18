@@ -1,24 +1,24 @@
 cdef struct QH:
-    float resoutflow
-    float reslevel
+    double resoutflow
+    double reslevel
 
-cdef void levelpool_physics(float dt,
-        float qi0,
-        float qi1,
-        float ql,
-        float ar,
-        float we,
-        float maxh,
-        float wc,
-        float wl,
-        float dl,
-        float oe,
-        float oc,
-        float oa,
-        float H0,
+cdef void levelpool_physics(double dt,
+        double qi0,
+        double qi1,
+        double ql,
+        double ar,
+        double we,
+        double maxh,
+        double wc,
+        double wl,
+        double dl,
+        double oe,
+        double oc,
+        double oa,
+        double H0,
         QH *rv) nogil
 
-cpdef float[:,:] compute_reservoir(const float[:] boundary,
-                                    const float[:,:] previous_state,
-                                    const float[:,:] parameter_inputs,
-                                    float[:,:] output_buffer) nogil
+cpdef double[:,:] compute_reservoir(const double[:] boundary,
+                                    const double[:,:] previous_state,
+                                    const double[:,:] parameter_inputs,
+                                    double[:,:] output_buffer) nogil

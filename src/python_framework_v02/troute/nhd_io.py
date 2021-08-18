@@ -197,7 +197,7 @@ def get_ql_from_csv(qlat_input_file, index_col=0):
     ql = pd.read_csv(qlat_input_file, index_col=index_col)
     ql.index = ql.index.astype(int)
     ql = ql.sort_index(axis="index")
-    return ql.astype("float32")
+    return ql.astype("float64")
 
 
 def read_qlat(path):
@@ -306,7 +306,7 @@ def write_q_to_wrf_hydro(
         flowveldepth_reindex = flowveldepth.reindex(chrtout.feature_id.values)
 
         # unpack, subset, and transpose t-route flow data
-        qtrt = flowveldepth_reindex.loc[:, ::3].to_numpy().astype("float32")
+        qtrt = flowveldepth_reindex.loc[:, ::3].to_numpy().astype("float64")
         qtrt = qtrt[:, ::qts_subdivisions]
         qtrt = np.transpose(qtrt)
 
@@ -713,7 +713,7 @@ def get_channel_restart_from_csv(
     q0 = pd.read_csv(channel_initial_states_file, index_col=index_col)
     q0.index = q0.index.astype(int)
     q0 = q0.sort_index(axis="index")
-    return q0.astype("float32")
+    return q0.astype("float64")
 
 
 def get_channel_restart_from_wrf_hydro(
@@ -850,7 +850,7 @@ def write_channel_restart_to_wrf_hydro(
                     flowveldepth_reindex.iloc[:, ::3]
                     .iloc[:, a]
                     .to_numpy()
-                    .astype("float32")
+                    .astype("float64")
                 )
                 qtrt = qtrt.reshape((len(flowveldepth_reindex,)))
                 qtrt_DataArray = xr.DataArray(
@@ -863,7 +863,7 @@ def write_channel_restart_to_wrf_hydro(
                     flowveldepth_reindex.iloc[:, 2::3]
                     .iloc[:, a]
                     .to_numpy()
-                    .astype("float32")
+                    .astype("float64")
                 )
                 htrt = htrt.reshape((len(flowveldepth_reindex,)))
                 htrt_DataArray = xr.DataArray(

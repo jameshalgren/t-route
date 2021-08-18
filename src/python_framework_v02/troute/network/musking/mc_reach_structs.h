@@ -7,8 +7,8 @@
 
 typedef struct _MC_Segment{
   long id;
-  float dt, dx, bw, tw, twcc, n, ncc, cs, s0;
-  float qdp, velp, depthp;
+  double dt, dx, bw, tw, twcc, n, ncc, cs, s0;
+  double qdp, velp, depthp;
 } _MC_Segment;
 
 typedef struct _MC_Reach{

@@ -6,10 +6,10 @@
 #include "../../reach_structs.h"
 typedef struct {
   int lake_number;
-  float dam_length, area, max_depth;
-  float orifice_area, orifice_coefficient, orifice_elevation;
-  float weir_coefficient, weir_elevation, weir_length;
-  float initial_fractional_depth, water_elevation;
+  double dam_length, area, max_depth;
+  double orifice_area, orifice_coefficient, orifice_elevation;
+  double weir_coefficient, weir_elevation, weir_length;
+  double initial_fractional_depth, water_elevation;
 
   //Handle to operate levelpool reservoir
   void* handle;

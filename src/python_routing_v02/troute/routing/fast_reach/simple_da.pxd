@@ -1,14 +1,14 @@
-cdef float simple_da_with_decay(
-    const float last_valid_obs,
-    const float model_val,
-    const float minutes_since_last_valid,
-    const float decay_coeff,
+cdef double simple_da_with_decay(
+    const double last_valid_obs,
+    const double model_val,
+    const double minutes_since_last_valid,
+    const double decay_coeff,
 ) nogil
 
 
-cdef float obs_persist_shift(
-    const float last_valid_obs,
-    const float model_val,
-    const float minutes_since_last_valid,
-    const float decay_coeff,
+cdef double obs_persist_shift(
+    const double last_valid_obs,
+    const double model_val,
+    const double minutes_since_last_valid,
+    const double decay_coeff,
 ) nogil

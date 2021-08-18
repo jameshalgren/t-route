@@ -3,30 +3,30 @@ import cython
 from .fortran_wrappers cimport c_muskingcungenwm
 
 @cython.boundscheck(False)
-cdef void muskingcunge(float dt,
-        float qup,
-        float quc,
-        float qdp,
-        float ql,
-        float dx,
-        float bw,
-        float tw,
-        float twcc,
-        float n,
-        float ncc,
-        float cs,
-        float s0,
-        float velp,
-        float depthp,
+cdef void muskingcunge(double dt,
+        double qup,
+        double quc,
+        double qdp,
+        double ql,
+        double dx,
+        double bw,
+        double tw,
+        double twcc,
+        double n,
+        double ncc,
+        double cs,
+        double s0,
+        double velp,
+        double depthp,
         QVD *rv) nogil:
 
     cdef:
-        float qdc = 0.0
-        float depthc = 0.0
-        float velc = 0.0
-        float ck = 0.0
-        float cn = 0.0
-        float X = 0.0
+        double qdc = 0.0
+        double depthc = 0.0
+        double velc = 0.0
+        double ck = 0.0
+        double cn = 0.0
+        double X = 0.0
 
     c_muskingcungenwm(
         &dt,
@@ -60,21 +60,21 @@ cdef void muskingcunge(float dt,
     rv.cn = cn
     rv.X = X
 
-cpdef dict compute_reach_kernel(float dt,
-        float qup,
-        float quc,
-        float qdp,
-        float ql,
-        float dx,
-        float bw,
-        float tw,
-        float twcc,
-        float n,
-        float ncc,
-        float cs,
-        float s0,
-        float velp,
-        float depthp):
+cpdef dict compute_reach_kernel(double dt,
+        double qup,
+        double quc,
+        double qdp,
+        double ql,
+        double dx,
+        double bw,
+        double tw,
+        double twcc,
+        double n,
+        double ncc,
+        double cs,
+        double s0,
+        double velp,
+        double depthp):
 
     cdef QVD rv
     cdef QVD *out = &rv
@@ -113,10 +113,10 @@ cpdef long output_buffer_cols() nogil:
     return 3
 
 @cython.boundscheck(False)
-cpdef float[:,:] compute_reach(const float[:] boundary,
-                                const float[:,:] previous_state,
-                                const float[:,:] parameter_inputs,
-                                float[:,:] output_buffer,
+cpdef double[:,:] compute_reach(const double[:] boundary,
+                                const double[:,:] previous_state,
+                                const double[:,:] parameter_inputs,
+                                double[:,:] output_buffer,
                                 Py_ssize_t size=0) nogil:
     """
     Compute a reach
@@ -133,7 +133,7 @@ cpdef float[:,:] compute_reach(const float[:] boundary,
     cdef QVD *out = &rv
 
     cdef:
-        float dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
+        double dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
         Py_ssize_t i, rows
 
     # check that previous state, parameter_inputs and output_buffer all have same axis 0
@@ -158,8 +158,8 @@ cpdef float[:,:] compute_reach(const float[:] boundary,
     if previous_state.shape[1] < 3:
         raise IndexError
 
-    cdef float qup = boundary[0]
-    cdef float quc = boundary[1]
+    cdef double qup = boundary[0]
+    cdef double quc = boundary[1]
 
     for i in range(rows):
         qlat = parameter_inputs[i, 0]

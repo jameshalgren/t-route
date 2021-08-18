@@ -168,7 +168,7 @@ def nwm_initial_warmstate_preprocess(
             waterbodies_initial_depth_const = -1.0
             # Set initial states from cold-state
             waterbodies_initial_states_df = pd.DataFrame(
-                0, index=waterbodies_df.index, columns=["qd0", "h0",], dtype="float32"
+                0, index=waterbodies_df.index, columns=["qd0", "h0",], dtype="float64"
             )
             # TODO: This assignment could probably by done in the above call
             waterbodies_initial_states_df["qd0"] = waterbodies_initial_ds_flow_const

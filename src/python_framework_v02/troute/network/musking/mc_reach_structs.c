@@ -14,9 +14,9 @@ void free_mc_reach(_Reach* reach)
 }
 
 void set_mc_segment(_Reach* reach, int index, long id,
-    float dt, float dx, float bw, float tw, float twcc,
-    float n, float ncc, float cs, float s0,
-    float qdp, float velp, float depthp)
+    double dt, double dx, double bw, double tw, double twcc,
+    double n, double ncc, double cs, double s0,
+    double qdp, double velp, double depthp)
 {
   if(index > -1 && index < reach->reach.mc_reach.num_segments)
   {
