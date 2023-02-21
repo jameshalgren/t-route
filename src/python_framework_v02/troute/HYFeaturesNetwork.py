@@ -7,7 +7,6 @@ import time
 import re
 import troute.nhd_io as nhd_io #FIXME
 from itertools import chain
-import geopandas as gpd
 from pathlib import Path
 
 __verbose__ = False
@@ -195,6 +194,7 @@ def read_json(file_path, edge_list):
     return df_main
 
 def read_geopkg(file_path):
+    import geopandas as gpd
     flowpaths = gpd.read_file(file_path, layer="flowpaths")
     attributes = gpd.read_file(file_path, layer="flowpath_attributes").drop('geometry', axis=1)
     #merge all relevant data into a single dataframe
