@@ -1,8 +1,11 @@
 numpy
-Cython
+Cython==3.0.3
 pandas>=1.1.5
 xarray
 netcdf4
+geopandas
+pyarrow
 pyyaml
 toolz
 joblib
+deprecated
