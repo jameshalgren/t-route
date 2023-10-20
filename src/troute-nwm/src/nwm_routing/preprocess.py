@@ -1094,8 +1094,7 @@ def nwm_forcing_preprocess(
         reservoir_usgs_df = (
             usgs_df_15min.join(link_lake_df, how = 'inner').
             reset_index().
-            set_index('usgs_lake_id').
-            drop(['index'], axis = 1)
+            set_index('usgs_lake_id')
         )
         
         LOG.debug(
