@@ -119,7 +119,7 @@ def get_geo_file_table_rows(
         # https://pandas.pydata.org/docs/user_guide/options.html
         pd.set_option("display.max_columns", None)
         pd.set_option("display.width", None)
-        pd.set_option("display.max_colwidth", -1)
+        pd.set_option("display.max_colwidth", None)
         print(geo_file.head())  # Preview the first 5 lines of the loaded data
 
     return geo_file_rows
@@ -590,8 +590,8 @@ def set_supernetwork_data(
 
     elif supernetwork == "CONUS_FULL_RES_v20":
 
-        ROUTELINK = r"RouteLink_NHDPLUS"
-        ModelVer = r"nwm.v2.0.2"
+        ROUTELINK = r"RouteLink_CONUS"
+        ModelVer = r"nwm.v3.0.20"
         ext = r"nc"
         sep = r"."
 
